@@ -4,7 +4,8 @@
 include config.mk
 
 SRC = tabbed.c xembed.c
-OBJ = ${SRC:.c=.o}
+EXTRA_OBJ = socket.c
+OBJ = ${SRC:.c=.o} ${EXTRA_OBJ}
 BIN = ${OBJ:.o=}
 
 all: options ${BIN}
@@ -27,7 +28,7 @@ config.h:
 
 .o:
 	@echo CC -o $@
-	@${CC} -o $@ $< ${LDFLAGS}
+	@${CC} -o $@ ${EXTRA_OBJ} $< ${LDFLAGS}
 
 clean:
 	@echo cleaning
