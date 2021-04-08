@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches:
+       - master
+  schedule:
+       # Once a week on saturday
+       - cron: '7 13 * * 6' 
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Fetch dependencies
+        run: |
+          sudo apt update
+          sudo apt install libx11-dev libxft-dev -y
+      - name: Build
+        run: make
+

@@ -6,14 +6,14 @@ let
     src = pkgs.fetchFromGitHub {
       owner = "SCOTT-HAMILTON";
       repo = "tabbed";
-      rev = "40d71347cb42dbfc68f636ca68120e46c7d4d520";
+      rev = "2836d8319efe19f7e3c866ee6923d5d11d925194";
       # If you don't know the hash, the first time, set:
       # sha256 = "0000000000000000000000000000000000000000000000000000";
       # then nix will fail the build with such an error message:
       # hash mismatch in fixed-output derivation '/nix/store/m1ga09c0z1a6n7rj8ky3s31dpgalsn0n-source':
       # wanted: sha256:0000000000000000000000000000000000000000000000000000
       # got:    sha256:173gxk0ymiw94glyjzjizp8bv8g72gwkjhacigd1an09jshdrjb4
-      sha256 = "1vdmggb4dywkm2r8ghsr48spdi49gpzd7l76m6xwl4dd791gka6c";
+      sha256 = "1d3qdgsbbqj9ryj6rgb66r4yayfp35aa4s6hgm9cch6wwsk3dcgc";
     };
   });
   patched-alacritty = pkgs.alacritty.overrideAttrs (old: rec {
@@ -21,14 +21,14 @@ let
     src = pkgs.fetchFromGitHub {
       owner = "SCOTT-HAMILTON";
       repo = "alacritty";
-      rev = "9f7323dc0d034b9f2babd77c710073a47da22e9b";
+      rev = "230f9207e38282814cc2f463eaf726dff9d45788";
       # If you don't know the hash, the first time, set:
       # sha256 = "0000000000000000000000000000000000000000000000000000";
       # then nix will fail the build with such an error message:
       # hash mismatch in fixed-output derivation '/nix/store/m1ga09c0z1a6n7rj8ky3s31dpgalsn0n-source':
       # wanted: sha256:0000000000000000000000000000000000000000000000000000
       # got:    sha256:173gxk0ymiw94glyjzjizp8bv8g72gwkjhacigd1an09jshdrjb4
-      sha256 = "08c0zhwb7nfwwfdv63gxv32crg8nascwa9iwk5rsbrsfx57fv9ja";
+      sha256 = "0xdnli6y6pjapskb00bwsmzdhvk69pljzi81agcsipgqgd1nxk04";
     };
     doCheck = false;
     cargoDeps = old.cargoDeps.overrideAttrs (pkgs.lib.const {

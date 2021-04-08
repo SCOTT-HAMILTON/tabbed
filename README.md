@@ -1,5 +1,5 @@
 <p align="center">
-    <img width="200" alt="Tabbed Logo" src="https://tools.suckless.org/tabbed/tabbed.png">
+    <img width="400" alt="Tabbed Logo" src="https://tools.suckless.org/tabbed/tabbed.png">
 </p>
 
 <p align="center">
@@ -7,7 +7,7 @@
 </p>
 
 <h1 align="center">Fork of Tabbed - The tab interface for application supporting Xembed </h1>
-<h3 align="center">Checkout the original project <a href="https://tools.suckless.org/tabbed/">here</a> and the alacritty fork needed to make this work <a href="https://github.com/SCOTT-HAMILTON/alacritty">here</a></h3>
+<h3 align="center">Checkout the original project <a href="https://tools.suckless.org/tabbed/">tabbed</a> and the alacritty fork needed to make this work <a href="https://github.com/SCOTT-HAMILTON/alacritty">alacritty</a></h3>
 
 ## About
 
