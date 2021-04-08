@@ -47,6 +47,8 @@ typedef struct {
 	
 	// message queue to send
 	struct msg *messages_queue;
+
+	int log_file;
 } SocketListener;
 
 int

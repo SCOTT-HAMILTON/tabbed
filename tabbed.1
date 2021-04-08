@@ -28,6 +28,10 @@ tabbed \- generic tabbed interface
 .IR urgfgcol ]
 .RB [ \-r
 .IR narg ]
+.RB [ \-w
+.IR working-dir-option ]
+.RB [ \-x
+.IR xembed-port-option ]
 .RI [ "command ..." ]
 .SH DESCRIPTION
 .B tabbed
@@ -81,6 +85,21 @@ will replace the
 th argument in
 .I command
 with the window id, rather than appending it to the end.
+.TP
+.BI \-w " working-dir-option"
+.I only for embedded terminal : 
+will feed this option followed by the current shell pwd to the new spawned 
+terminal (even though nothing is done to test if the embedded window is
+a terminal). Alternatively, the user can use the
+.I TABBED_WORKING_DIR_OPTION
+environment variable.
+.TP
+.BI \-x " xembed-port-option"
+.I again for embedded terminal : 
+.I this option requires
+.BI -w
+will feed this option followed by the unix domain socket tcp port configured
+for communicating with the terminal.
 .TP
 .B \-s
 will disable automatic spawning of the command.
@@ -156,6 +175,10 @@ $ tabbed xterm -into
 $ $(tabbed -d >/tmp/tabbed.xid); urxvt -embed $(</tmp/tabbed.xid);
 .TP
 $ tabbed -r 2 st -w '' -e tmux
+.TP
+$ tabbed -cr 2 -w '--working-directory' -x '--xembed-tcp-port' alacritty --embed ""
+.TP
+$ export TABBED_WORKING_DIR_OPTION='--working-directory' TABBED_XEMBED_PORT_OPTION="--xembed-tcp-port" && tabbed -cr 2 alacritty --embed ''
 .SH CUSTOMIZATION
 .B tabbed
 can be customized by creating a custom config.h and (re)compiling the source

@@ -145,6 +145,7 @@ static void printcmds(int debug);
 static void setup(void);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
+static void spawn_no_xembed_port(const Arg *arg);
 static int textnw(const char *text, unsigned int len);
 static void toggle(const Arg *arg);
 static void unmanage(int c);
@@ -178,8 +179,12 @@ static Bool running = True, nextfocus, doinitspawn = True,
 /* static atomic_bool askforshellpwd = True; */
 /* static atomic_ulong current_focused_window; */
 static SharedMemory* shared_memory = NULL;
+static int log_file;
+static char TABBED_LOG_FILE[] = "tabbed-log-XXXXXX";
+static const int DEBUG_LEVEL = 1;
 
 static char xembed_port_option[128] = {0};
+static char set_working_dir_option[128] = {0};
 static Display *dpy;
 static DC dc;
 static Atom wmatom[WMLast];
@@ -270,20 +275,22 @@ cleanup(void)
 	int* shared_running = &shared_memory->running;
 	*shared_running = False;
 	// Wait for all child to quit before unmapping the shared memory
-	fprintf(stderr, "[debug-tabbed] waiting for childs to terminate...\n");
+	dprintf(log_file, "[debug-tabbed] waiting for childs to terminate...\n");
 	pid_t 	wpid;
 	while ((wpid = wait(NULL)) != -1) {
-		fprintf(stderr, "[debug-tabbed] CHILD `%d` exitted\n",
+		dprintf(log_file, "[debug-tabbed] CHILD `%d` exitted\n",
 				(int)wpid);
 	}
-	fprintf(stderr, "[debug-tabbed] All childs terminated, we can unmap the shared memory !\n");
+	dprintf(log_file, "[debug-tabbed] All childs terminated, we can unmap the shared memory !\n");
 
 	if ((void*)shared_memory != MAP_FAILED) {
 		if (munmap((void*)shared_memory, SHARED_MEMORY_SIZE) == -1) {
-			fprintf(stderr, "[error-tabbed] can't free shared memory, munmap(%ld) == -1\n",
+			dprintf(log_file, "[error-tabbed] can't free shared memory, munmap(%ld) == -1\n",
 					SHARED_MEMORY_SIZE);
 		}
 	}
+	unlink(TABBED_LOG_FILE);
+	close(log_file);
 }
 
 void
@@ -536,7 +543,7 @@ focus(int c)
 	unsigned long* current_focused_window = &shared_memory->current_focused_window;
 	*current_focused_window = clients[c]->win;
 	*askforshellpwd = True;
-	fprintf(stderr, "[log-tabbed] New current focused window ID : `%ld`, askforshellpwd : `%s`\n",
+	dprintf(log_file, "[log-tabbed] New current focused window ID : `%ld`, askforshellpwd : `%s`\n",
 			*current_focused_window, (*askforshellpwd)?"True":"False");
 }
 
@@ -780,7 +787,6 @@ manage(Window w)
 		c = ecalloc(1, sizeof *c);
 		c->win = w;
 		
-		fprintf(stderr, "new client window ID : `%ld`\n", c->win);
 		nclients++;
 		clients = erealloc(clients, sizeof(Client *) * nclients);
 
@@ -892,7 +898,6 @@ propertynotify(const XEvent *e)
 		} else {
 			cmd[cmd_append_pos] = selection;
 			arg.v = cmd;
-			fprintf(stderr, "[log-tabbed] property notify spawn\n");
 			spawn(&arg);
 		}
 	} else if (ev->state == PropertyNewValue && ev->atom == XA_WM_HINTS &&
@@ -956,7 +961,6 @@ resize(int c, int w, int h)
 void
 rotate(const Arg *arg)
 {
-	fprintf(stderr, "[log-tabbed] Focus pid before `%d`\n", getpid());
 	int nsel = -1;
 
 	if (sel < 0) {
@@ -976,8 +980,6 @@ rotate(const Arg *arg)
 		while (nsel < 0)
 			nsel += nclients;
 		focus(nsel);
-		fprintf(stderr, "[log-tabbed] current client infos : name=`%s`, tabx=`%d`, urgent=`%d`, closed=`%d`, window XID=`%lu`\n",
-				clients[nsel]->name, clients[nsel]->tabx, clients[nsel]->urgent, clients[nsel]->closed, clients[nsel]->win);
 	}
 }
 
@@ -1040,10 +1042,7 @@ setcmd(int argc, char *argv[], int replace)
 void
 insertcmd(char* command, size_t cmd_size, size_t pos)
 {
-	fprintf(stderr, "[debug-tabbed] cmds before inserting `%s` at `%lu`: \n",
-			command, pos);
 	printcmds(False);
-	fprintf(stderr, "Still 1\n");
 	int commands_count = 0;
 	while (cmd[commands_count++] != NULL);
 	--commands_count;
@@ -1063,7 +1062,6 @@ insertcmd(char* command, size_t cmd_size, size_t pos)
 		++cmd_append_pos;
 	}
 	cmd[commands_count+1] = NULL;
-	fprintf(stderr, "[debug-tabbed] cmds after insert : \n");
 	printcmds(True);
 }
 
@@ -1074,9 +1072,9 @@ printcmds(int debug)
 	int i = 0;
 	while (command != NULL) {
 		if (debug) {
-			fprintf(stderr, "[debug-tabbed] cmd[%d] : `%s`\n", i, command);
+			dprintf(log_file, "[debug-tabbed] cmd[%d] : `%s`\n", i, command);
 		} else {
-			fprintf(stderr, "cmd[%d] : `%s`\n", i, command);
+			dprintf(log_file, "cmd[%d] : `%s`\n", i, command);
 		}
 		++i;
 		command = cmd[i];
@@ -1185,7 +1183,6 @@ setup(void)
 	XSetWMProtocols(dpy, win, &wmatom[WMDelete], 1);
 
 	snprintf(winid, sizeof(winid), "%lu", win);
-	fprintf(stderr, "[log-tabbed] winid `%s`\n", winid);
 	setenv("XEMBED", winid, 1);
 
 	nextfocus = foreground;
@@ -1205,20 +1202,11 @@ void
 spawn(const Arg *arg)
 {
 	// Set working dir here...
-	if (sel != -1) {
-		fprintf(stderr, "[log-tabbed] current client[%d]'s XID : `%lu`\n", sel, clients[sel]->win);
-		char* shared_shellpwd = shared_memory->shell_pwd;
-		int* shellpwd_written = &shared_memory->shellpwd_written;
-		if (*shellpwd_written) {
-			fprintf(stderr, "[log-tabbed] current shell pwd : `%s`\n", shared_shellpwd);
-		}
-		/* int i = 0; */
-		/* for (i = 0; i < nclients; ++i) { */
-		/* 	fprintf(stderr, "[log-tabbed] client[%d]'s XID : `%lu`\n", i, clients[i]->win); */
-		/* } */
-	}
-	fprintf(stderr, "[log-tabbed] spawning something...\n");
-	if (fork() > 0) {
+	if (xembed_port_option == NULL || strlen(xembed_port_option) == 0
+			|| set_working_dir_option == NULL || strlen(set_working_dir_option) == 0) {
+		spawn_no_xembed_port(arg);
+		return;
+	} else if (fork() > 0) {
 		if(dpy)
 			close(ConnectionNumber(dpy));
 
@@ -1230,11 +1218,13 @@ spawn(const Arg *arg)
 			        ((char **)arg->v)[0]);
 		} else {
 			// Setting up socket
+			
 			SocketListener socket_listener;
 			unsigned long UNIQUE_ID = make_unique_id();
 			make_socket_listener(&socket_listener, UNIQUE_ID);
+			socket_listener.log_file = log_file;
 			if (fork() != 0) {
-				unsigned long associated_client_xid;
+				unsigned long associated_client_xid = 0;
 				char shell_pwd[256];
 				int associated_client_xid_asked = False,
 					associated_client_xid_set = False,
@@ -1243,9 +1233,11 @@ spawn(const Arg *arg)
 				int64_t last_pwd_ask_send_time = 0;
 				int timeoutms = 1;
 				if (setup_nonblocking_listener(&socket_listener) == -1) {
-					fprintf(stderr, "[error-tabbed] setup failed, exitting...\n");
+					dprintf(log_file, "[error-tabbed] setup failed, exitting...\n");
 				} else {
-					fprintf(stderr, "[log-tabbed] starting to listen on port `%u`\n", socket_listener.socket_port);
+					if (DEBUG_LEVEL == 1) {
+						dprintf(log_file, "[log-tabbed] starting to listen on port `%u`\n", socket_listener.socket_port);
+					}
 					// Timeout a few ms between iterations
 					char send_buffer[64];
 					char recv_buffer[256];
@@ -1258,7 +1250,7 @@ spawn(const Arg *arg)
 						// Only enabled once connection is setted up thus
 						// the shell_pwd_set test
 						if (associated_client_xid_set) {
-							/* fprintf(stderr, "[debug-tabbed] Running `%lu`\n", */
+							/* dprintf(log_file, "[debug-tabbed] Running `%lu`\n", */
 							/* 		associated_client_xid); */
 						}
 						if (associated_client_xid_set && shell_pwd_set) {
@@ -1266,25 +1258,27 @@ spawn(const Arg *arg)
 								if (!was_focused) {
 									timeoutms = 10;
 									was_focused = True;
-									fprintf(stderr, "[log-tabbed] won focus, asking client to enter turbo mode\n");
+									/* dprintf(log_file, "[log-tabbed] won focus, asking client to enter turbo mode\n"); */
 									strncpy(send_buffer, "turbo", 63);
 									socket_send(&socket_listener, send_buffer, 63);
 								}
 							} else if (was_focused) {
 								was_focused = False;
-								fprintf(stderr, "[log-tabbed] lost focus, asking client to enter sleep mode\n");
+								/* dprintf(log_file, "[log-tabbed] lost focus, asking client to enter sleep mode\n"); */
 								strncpy(send_buffer, "sleep", 63);
 								socket_send(&socket_listener, send_buffer, 63);
 							}
 						}
 						if (!associated_client_xid_asked) {
-							fprintf(stderr, "[log-tabbed] asking for client XID?\n");
+							if (DEBUG_LEVEL == 1) {
+								dprintf(log_file, "[log-tabbed] asking for client XID?\n");
+							}
 							strncpy(send_buffer, "XID?", 63);
 							if (socket_send(&socket_listener, send_buffer, 63) != -1) {
 								associated_client_xid_asked = True;
 							}
 						} if (*askforshellpwd) {
-							/* fprintf(stderr, "[log-tabbed] current:%lu,myid:%lu,diff:%ld\n", */
+							/* dprintf(log_file, "[log-tabbed] current:%lu,myid:%lu,diff:%ld\n", */
 							/* 		*current_focused_window, associated_client_xid, get_posix_time()-last_pwd_ask_send_time); */
 							if (associated_client_xid_set) {
 								if (*current_focused_window == associated_client_xid) {
@@ -1295,23 +1289,32 @@ spawn(const Arg *arg)
 										strncpy(shared_shellpwd, shell_pwd, 255);
 										shared_shellpwd[strlen(shell_pwd)] = '\0';
 										*shellpwd_written = 1;
-										/* fprintf(stderr, "[log-tabbed] client `%lu` wrote shell pwd `%s`\n", */
-										/* 		associated_client_xid, shell_pwd); */
+
+										if (DEBUG_LEVEL == 1) {
+											dprintf(log_file, "[log-tabbed] client `%lu` wrote shell pwd `%s`\n",
+													associated_client_xid, shell_pwd);
+										}
 									}
 									int64_t time = get_posix_time();
 									if (time == -1) {
-										fprintf(stderr, "[error-tabbed] can't get time...\n");
+										dprintf(log_file, "[error-tabbed] can't get time...\n");
 									} else if (time-last_pwd_ask_send_time > 500) {
 										last_pwd_ask_send_time = time;
-										fprintf(stderr, "[log-tabbed] asking for client shell PWD?\n");
+										if (DEBUG_LEVEL == 1) {
+											dprintf(log_file, "[log-tabbed] asking for client shell PWD?\n");
+										}
 										strncpy(send_buffer, "PWD?", 63);
 										socket_send(&socket_listener, send_buffer, 63);
 										char* shared_shellpwd = shared_memory->shell_pwd;
-										fprintf(stderr, "last shared_shellpwd : `%s`\n", shared_shellpwd);
+										if (DEBUG_LEVEL == 1) {
+											dprintf(log_file, "last shared_shellpwd : `%s`\n", shared_shellpwd);
+										}
 									}
 								}
 							} else if (!associated_client_xid_asked){
-								fprintf(stderr, "[log-tabbed] asking for client XID?\n");
+								if (DEBUG_LEVEL == 1) {
+									dprintf(log_file, "[log-tabbed] asking for client XID?\n");
+								}
 								strncpy(send_buffer, "XID?", 63);
 								if (socket_send(&socket_listener, send_buffer, 63) != -1) {
 									associated_client_xid_asked = True;
@@ -1320,10 +1323,10 @@ spawn(const Arg *arg)
 						}
 						int ret = loop_listen_nonblocking(&socket_listener, recv_buffer, 255, timeoutms);
 						if (ret == -1) {
-							fprintf(stderr, "[error-tabbed] socket loop error, exitting\n");
+							dprintf(log_file, "[error-tabbed] socket loop error, exitting\n");
 							break;
 						} else if (ret == 1) {
-							fprintf(stderr, "[log-tabbed] no more fd open, communication ended, XD !\n");
+							dprintf(log_file, "[log-tabbed] no more fd open, communication ended, XD !\n");
 							break;
 						} else if (ret == 2) {
 							// We received something !
@@ -1332,25 +1335,25 @@ spawn(const Arg *arg)
 								strncpy(XID_buf, recv_buffer+4, 31-4);
 								unsigned long XID = strtoul(XID_buf, NULL, 10);
 								if (XID == ULONG_MAX) {
-									fprintf(stderr, "[error-tabbed] invalid XID : strtoul(%s, 10) == ERROR\n",
+									dprintf(log_file, "[error-tabbed] invalid XID : strtoul(%s, 10) == ERROR\n",
 											XID_buf);
 								} else {
 									associated_client_xid = XID;
 									associated_client_xid_set = True;
-									fprintf(stderr, "[log-tabbed] received client's XID : `%lu`\n", associated_client_xid);
+									dprintf(log_file, "[log-tabbed] received client's XID : `%lu`\n", associated_client_xid);
 								}
 							} else if (strncmp(recv_buffer, "PWD:", 4) == 0) {
-								fprintf(stderr, "[log-tabbed] client `%lu` wrote shell pwd `%s`\n",
-										associated_client_xid, recv_buffer);
+								/* dprintf(log_file, "[log-tabbed] client `%lu` wrote shell pwd `%s`\n", */
+								/* 		associated_client_xid, recv_buffer); */
 								strncpy(shell_pwd, recv_buffer+4, 255-4);
 								if (!shell_pwd_set) {
-									fprintf(stderr, "[log-tabbed] Up and running in `%lu`ms\n",
+									dprintf(log_file, "[log-tabbed] Up and running in `%lu`ms\n",
 											get_posix_time()-shared_memory->debug_time);
 								}
 								shell_pwd_set = True;
-								/* fprintf(stderr, "[log-tabbed] received client's PWD : `%s`\n", shell_pwd); */
+								/* dprintf(log_file, "[log-tabbed] received client's PWD : `%s`\n", shell_pwd); */
 							} else {
-									fprintf(stderr, "[error-tabbed] received unknown command : `%s`\n", recv_buffer);
+									dprintf(log_file, "[error-tabbed] received unknown command : `%s`\n", recv_buffer);
 							}
 						}
 						/* else if (ret == 0) {
@@ -1358,30 +1361,25 @@ spawn(const Arg *arg)
 						}*/
 						usleep(timeoutms*1000);
 					}
-					fprintf(stderr, "[log-tabbed] client communication on port `%u` terminated.\n",
+					dprintf(log_file, "[log-tabbed] client communication on port `%u` terminated.\n",
 							socket_listener.socket_port);
 					cleanup_socket(&socket_listener);
-					fprintf(stderr, "[log-tabbed] socket cleaned up.\n");
+					dprintf(log_file, "[log-tabbed] socket cleaned up.\n");
 				}
 			} else {
 				// Child
 				// Should wait until lock port file exists
-				fprintf(stderr, "[log-tabbed] waiting for lock port file to be filled in by server...\n");
-				// Wait until lock file is filled with port, 200ms delay between iterations
-				unsigned long socket_port = wait_for_socket_port_lock(&socket_listener, 10);
+				// Wait until lock file is filled with port, 1ms delay between iterations
+				unsigned long socket_port = wait_for_socket_port_lock(&socket_listener, 1);
 				if (socket_port == -1) {
-					fprintf(stderr, "[error-tabbed] failed to wait for socket port lock, exitting...\n");
+					dprintf(log_file, "[error-tabbed] failed to wait for socket port lock, exitting...\n");
 				} else {
-					fprintf(stderr, "[log-tabbed] read socket server port is `%lu`\n", socket_port);
-					fprintf(stderr, "[log-tabbed] xember port format size : %ld\n", strlen(xembed_port_option));
-
 					char* shared_shellpwd = shared_memory->shell_pwd;
 					int* shellpwd_written = &shared_memory->shellpwd_written;
 					// Can't use mmap share memory outside of this processus ?
 					char buffer_shellpwd[256];
-					char* working_dir_option = "--working-directory";
 
-					if (strlen(xembed_port_option) != 0) {
+					if (strlen(xembed_port_option) != 0 && strlen(set_working_dir_option)) {
 						char buf[23];
 						snprintf(buf, 22, "%lu", socket_port);
 						cmd[cmd_append_pos] = xembed_port_option;
@@ -1390,7 +1388,7 @@ spawn(const Arg *arg)
 						if (*shellpwd_written) {
 							strncpy(buffer_shellpwd, shared_shellpwd, 255);
 							insertcmd(buffer_shellpwd, strlen(buffer_shellpwd), 1);
-							insertcmd(working_dir_option, strlen(working_dir_option), 1);
+							insertcmd(set_working_dir_option, strlen(set_working_dir_option), 1);
 							// Bad position
 							/* cmd[cmd_append_pos+2] = "--working-directory"; */
 							/* cmd[cmd_append_pos+3] = buffer_shellpwd; */
@@ -1405,17 +1403,37 @@ spawn(const Arg *arg)
 						}
 					}
 					shared_memory->debug_time = get_posix_time();
-					fprintf(stderr, "[debug-tabbed] cmd : `%s`\n",cmd[0]);
-					printcmds(True);
+					/* dprintf(log_file, "[debug-tabbed] cmd : `%s`\n",cmd[0]); */
+					/* printcmds(True); */
 					execvp(cmd[0], cmd);
-					fprintf(stderr, "%s: execvp %s", argv0, cmd[0]);
+					dprintf(log_file, "%s: execvp %s", argv0, cmd[0]);
 				}
 			}
 		}
 		if (!is_socket_server) {
-			fprintf(stderr, "Failed\n");
+			dprintf(log_file, "Failed\n");
 			perror(" failed");
 			exit(0);
+		}
+	}
+}
+void
+spawn_no_xembed_port(const Arg *arg)
+{
+	// Set working dir here...
+	if (fork() > 0) {
+		if(dpy)
+			close(ConnectionNumber(dpy));
+
+		setsid();
+		if (arg && arg->v) {
+			execvp(((char **)arg->v)[0], (char **)arg->v);
+			fprintf(stderr, "%s: execvp %s", argv0,
+			        ((char **)arg->v)[0]);
+		} else {
+			cmd[cmd_append_pos] = NULL;
+			execvp(cmd[0], cmd);
+			dprintf(log_file, "%s: execvp %s", argv0, cmd[0]);
 		}
 	}
 }
@@ -1470,7 +1488,7 @@ unmanage(int c)
 		if (closelastclient)
 			running = False;
 		else if (fillagain && running) {
-			fprintf(stderr, "[log-tabbed] unmanage spawn\n");
+			dprintf(log_file, "[log-tabbed] unmanage spawn\n");
 			spawn(NULL);
 		}
 	} else {
@@ -1560,7 +1578,7 @@ xerror(Display *dpy, XErrorEvent *ee)
 	        ee->error_code == BadDrawable))
 		return 0;
 
-	fprintf(stderr, "%s: fatal error: request code=%d, error code=%d\n",
+	dprintf(log_file, "%s: fatal error: request code=%d, error code=%d\n",
 	        argv0, ee->request_code, ee->error_code);
 	return xerrorxlib(dpy, ee); /* may call exit */
 }
@@ -1583,7 +1601,7 @@ usage(void)
 {
 	die("usage: %s [-dfksv] [-g geometry] [-n name] [-p [s+/-]pos]\n"
 	    "       [-r narg] [-o color] [-O color] [-t color] [-T color]\n"
-	    "       [-u color] [-U color] command...\n", argv0);
+	    "       [-u color] [-U color] [ -x option ] [ -w option ] command...\n", argv0);
 }
 
 int
@@ -1593,6 +1611,9 @@ main(int argc, char *argv[])
 	int replace = 0;
 	char *pstr;
 	char *wstr;
+	char *xstr;
+	int xembed_port_option_set = 0,
+		set_working_dir_option_set = 0;
 
 	ARGBEGIN {
 	case 'c':
@@ -1653,22 +1674,55 @@ main(int argc, char *argv[])
 		break;
 	case 'w':
 		wstr = EARGF(usage());
-		strncpy(xembed_port_option, wstr, 127);
+		strncpy(set_working_dir_option, wstr, 127);
+		set_working_dir_option_set = 1;
+		break;
+	case 'x':
+		xstr = EARGF(usage());
+		strncpy(xembed_port_option, xstr, 127);
+		xembed_port_option_set = 1;
 		break;
 	default:
 		usage();
 		break;
 	} ARGEND;
 
+	if (!xembed_port_option_set) {
+		char* port_option = getenv("TABBED_XEMBED_PORT_OPTION");
+		if (port_option != NULL) {
+			strncpy(xembed_port_option, port_option, 127);
+			dprintf(log_file, "[log-tabbed]  TABBED_XEMBED_PORT_OPTION = `%s`\n",
+						xembed_port_option);
+		} else {
+			xembed_port_option[0] = '\0';
+		}
+	}
+	if (!set_working_dir_option_set) {
+		char* port_option = getenv("TABBED_WORKING_DIR_OPTION");
+		if (port_option != NULL) {
+			strncpy(set_working_dir_option, port_option, 127);
+			dprintf(log_file, "[log-tabbed]  TABBED_WORKING_DIR_OPTION = `%s`\n",
+						set_working_dir_option);
+		} else {
+			set_working_dir_option[0] = '\0';
+		}
+	}
+
 	if (argc < 1) {
 		doinitspawn = False;
 		fillagain = False;
+	}
+	log_file = mkstemp(TABBED_LOG_FILE);
+	if (log_file == -1) {
+		dprintf(log_file, "[error-tabbed] can't make log file : mkstemp(%s) == -1\n",
+				TABBED_LOG_FILE);
+		return -1;
 	}
 
 	// Initialize shared memory for
 	shared_memory = (SharedMemory*)create_shared_memory(SHARED_MEMORY_SIZE);
 	if ((void*)shared_memory == MAP_FAILED) {
-		fprintf(stderr, "[error-tabbed] couldn't create shared memory, mmap(%ld) == ERROR",
+		dprintf(log_file, "[error-tabbed] couldn't create shared memory, mmap(%ld) == ERROR",
 			SHARED_MEMORY_SIZE);
 		cleanup();
 		return -1;
@@ -1683,7 +1737,7 @@ main(int argc, char *argv[])
 	setcmd(argc, argv, replace);
 
 	if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
-		fprintf(stderr, "%s: no locale support\n", argv0);
+		dprintf(log_file, "%s: no locale support\n", argv0);
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("%s: cannot open display\n", argv0);
 
@@ -1704,7 +1758,7 @@ main(int argc, char *argv[])
 	run();
 	cleanup();
 	XCloseDisplay(dpy);
-	fprintf(stderr, "[debug-tabbed] finished!\n");
+	dprintf(log_file, "[debug-tabbed] finished!\n");
 
 	return EXIT_SUCCESS;
 }
