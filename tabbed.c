@@ -181,7 +181,7 @@ static Bool running = True, nextfocus, doinitspawn = True,
 static SharedMemory* shared_memory = NULL;
 static int log_file;
 static char TABBED_LOG_FILE[] = "tabbed-log-XXXXXX";
-static const int DEBUG_LEVEL = 1;
+static const int DEBUG_LEVEL = 0;
 
 static char xembed_port_option[128] = {0};
 static char set_working_dir_option[128] = {0};
