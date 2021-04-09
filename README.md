@@ -10,6 +10,12 @@
 <h1 align="center">Fork of Tabbed - The tab interface for application supporting Xembed </h1>
 <h3 align="center">Checkout the original project <a href="https://tools.suckless.org/tabbed/">tabbed</a> and the alacritty fork needed to make this work <a href="https://github.com/SCOTT-HAMILTON/alacritty">alacritty</a></h3>
 
+<p align="center">
+  <img width="600"
+       alt="Tabbed-Alacritty - Demo of directory following"
+       src="https://user-images.githubusercontent.com/24496705/114190710-e47e2000-994b-11eb-89e4-0ceef358b251.gif">
+</p>
+
 ## About
 
 This project is a fork of tabbed. (A name needs to be found tho).
