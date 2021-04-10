@@ -19,10 +19,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "11.0"
+          directory: ${{ runner.temp }}/llvm
       - name: Fetch dependencies
         run: |
           sudo apt update
           sudo apt install libx11-dev libxft-dev libbsd-dev -y
       - name: Build
-        run: make
+        run: make CC=clang
 

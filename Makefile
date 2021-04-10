@@ -12,9 +12,10 @@ all: options ${BIN}
 
 options:
 	@echo tabbed build options:
-	@echo "CFLAGS   = ${CFLAGS}"
-	@echo "LDFLAGS  = ${LDFLAGS}"
-	@echo "CC       = ${CC}"
+	@echo "CFLAGS     = ${CFLAGS}"
+	@echo "LDFLAGS    = ${LDFLAGS}"
+	@echo "CC         = ${CC}"
+	@echo "CC version = `${CC} --version`"
 
 .c.o:
 	@echo CC $<

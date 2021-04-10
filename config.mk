@@ -22,12 +22,12 @@ LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 ${FREETYPELIBS} -lbsd
 
 # flags
 CPPFLAGS = -DVERSION=\"${VERSION}\" -D_DEFAULT_SOURCE
-CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
-LDFLAGS = -s ${LIBS}
+CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS} -fprofile-arcs -ftest-coverage -fprofile-dir=/tmp
+LDFLAGS = -s ${LIBS} -fprofile-arcs
 
 # Solaris
 #CFLAGS = -fast ${INCS} -DVERSION=\"${VERSION}\"
 #LDFLAGS = ${LIBS}
 
 # compiler and linker
-CC = cc
+CC ?= cc
