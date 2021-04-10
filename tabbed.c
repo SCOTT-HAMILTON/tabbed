@@ -443,7 +443,7 @@ drawbar(void)
 void
 drawtext(const char *text, XftColor col[ColLast], size_t size)
 {
-	int i, j, x, y, h, len, olen;
+	int x, y, h, len, olen;
 	char buf[256];
 	XftDraw *d;
 	XRectangle r = { dc.x, dc.y, dc.w, dc.h };
@@ -467,6 +467,7 @@ drawtext(const char *text, XftColor col[ColLast], size_t size)
 
 	memcpy(buf, text, len);
 	if (len < olen) {
+		int i, j;
 		for (i = len, j = strnlen(titletrim, sizeof(titletrim)); j && i;
 		     buf[--i] = titletrim[--j])
 			;
@@ -510,12 +511,12 @@ void
 focus(int c)
 {
 	char buf[BUFSIZ] = "tabbed-"VERSION" ::";
-	size_t i, n;
 	XWMHints* wmh;
 
 	/* If c, sel and clients are -1, raise tabbed-win itself */
 	if (nclients == 0) {
 		cmd[cmd_append_pos] = NULL;
+		size_t i, n;
 		for(i = 0, n = strnlen(buf, BUFSIZ); cmd[i] && n < sizeof(buf); i++)
 			n += snprintf(&buf[n], sizeof(buf) - n, " %s", cmd[i]);
 
@@ -720,11 +721,12 @@ initfont(const char *fontstr)
 Bool
 isprotodel(int c)
 {
-	int i, n;
+	int n;
 	Atom *protocols;
 	Bool ret = False;
 
 	if (XGetWMProtocols(dpy, clients[c]->win, &protocols, &n)) {
+		int i;
 		for (i = 0; !ret && i < n; i++) {
 			if (protocols[i] == wmatom[WMDelete])
 				ret = True;
@@ -978,7 +980,7 @@ resize(int c, int w, int h)
 void
 rotate(const Arg *arg)
 {
-	int nsel = -1;
+	int nsel;
 
 	if (sel < 0) {
 		fprintf(stderr, "[error-tabbed] invalid sel `%d`\n", sel);
@@ -1101,7 +1103,7 @@ printcmds(int debug)
 void
 setup(void)
 {
-	int bitm, tx, ty, tw, th, dh, dw, isfixed;
+	int tx, ty, tw, th, isfixed;
 	XWMHints *wmh;
 	XClassHint class_hint;
 	XSizeHints *size_hint;
@@ -1134,7 +1136,7 @@ setup(void)
 
 	if (geometry) {
 		tx = ty = tw = th = 0;
-		bitm = XParseGeometry(geometry, &tx, &ty, (unsigned *)&tw,
+		int bitm = XParseGeometry(geometry, &tx, &ty, (unsigned *)&tw,
 		                      (unsigned *)&th);
 		if (bitm & XValue)
 			wx = tx;
@@ -1151,8 +1153,8 @@ setup(void)
 		if (bitm & (HeightValue | WidthValue))
 			isfixed = 1;
 
-		dw = DisplayWidth(dpy, screen);
-		dh = DisplayHeight(dpy, screen);
+		int dw = DisplayWidth(dpy, screen);
+		int dh = DisplayHeight(dpy, screen);
 		if (wx < 0)
 			wx = dw + wx - ww - 1;
 		if (wy < 0)
@@ -1241,21 +1243,21 @@ spawn(const Arg *arg)
 			make_socket_listener(&socket_listener, UNIQUE_ID);
 			socket_listener.log_file = log_file;
 			if (fork() != 0) {
-				unsigned long associated_client_xid = 0;
-				char shell_pwd[256];
-				int associated_client_xid_asked = False,
-					associated_client_xid_set = False,
-					shell_pwd_set = False;
 				is_socket_server = 1;
-				int64_t last_pwd_ask_send_time = 0;
-				int timeoutms = 1;
 				if (setup_nonblocking_listener(&socket_listener) == -1) {
 					dprintf(log_file, "[error-tabbed] setup failed, exitting...\n");
 				} else {
 					if (DEBUG_LEVEL == 1) {
 						dprintf(log_file, "[log-tabbed] starting to listen on port `%u`\n", socket_listener.socket_port);
 					}
-					// Timeout a few ms between iterations
+					unsigned long associated_client_xid = 0;
+					char shell_pwd[256];
+					int associated_client_xid_asked = False,
+						associated_client_xid_set = False,
+						shell_pwd_set = False;
+					int64_t last_pwd_ask_send_time = 0;
+					int timeoutms = 1;
+
 					char send_buffer[64];
 					char recv_buffer[256];
 
