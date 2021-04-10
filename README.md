@@ -14,7 +14,7 @@
 <p align="center">
   <img width="600"
        alt="Tabbed-Alacritty - Demo of directory following"
-       src="https://user-images.githubusercontent.com/24496705/114190710-e47e2000-994b-11eb-89e4-0ceef358b251.gif">
+       src="https://user-images.githubusercontent.com/24496705/114284799-b6cfce80-9a52-11eb-91e6-98336eb92a7f.gif">
 </p>
 
 ## About
