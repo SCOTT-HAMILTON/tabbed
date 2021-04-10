@@ -1,6 +1,7 @@
 #include "socket.h"
 
 #include <arpa/inet.h>
+#include <bsd/string.h>
 #include <errno.h>
 #include <limits.h>
 #include <netinet/in.h>
@@ -164,8 +165,10 @@ loop_listen_nonblocking(SocketListener* socket_listener, char* buffer, size_t si
 				if (s > 0) {
 					socket_listener->empty_pollin_received_count = 0;
 					buffer[0] = '\0';
-					strncat(buffer, buf, s);
-					/* dprintf(socket_listener->log_file, "[log-tabbed] loop_non_blocking : received %zd bytes: %.*s\n", s, (int) s, buffer); */
+					strlcpy(buffer, buf, s+1);
+					/* fprintf(stderr, "[log-tabbed] received : `%s` => `%s`:`%ld`\n", */
+					/* 		buf, buffer, s+1); */
+					dprintf(socket_listener->log_file, "[log-tabbed] loop_non_blocking : received %zd bytes: %.*s\n", s, (int) s, buffer);
 					return 2;
 				} else if (s == 0) {
 					if (socket_listener->empty_pollin_received_count == 0) {
@@ -295,7 +298,9 @@ socket_send(SocketListener* socket_listener, char* message_to_send, size_t msg_s
 		const size_t sizeof_msg_content = sizeof(((struct msg*)0)->content);
 		struct msg* message = malloc(sizeof(struct msg));
 		message->content[0] = '\0';
-		strncat(message->content, message_to_send, sizeof_msg_content-1);
+		strlcpy(message->content, message_to_send, sizeof_msg_content);
+		/* fprintf(stderr, "[log-tabbed] sent : `%s` => `%s`:`%ld`\n", */
+		/* 		message_to_send, message->content, sizeof_msg_content); */
 		QUEUE_PUSH(socket_listener->messages_queue, message);
 		/* dprintf(socket_listener->log_file, "[log-tabbed] socket_send : message `%s` pushed\n", */
 			/* message->content); */
@@ -314,7 +319,7 @@ make_socket_listener(SocketListener* socket_listener, unsigned long UNIQUE_ID) {
 	socket_listener->empty_pollin_received_count = 0;
 	char format[64];
 	format[0] = '\0';
-	strncat(format, SOCKET_TMP_LOCK_FORMAT, 63);
+	strlcpy(format, SOCKET_TMP_LOCK_FORMAT, 63);
 	socket_listener->lock_port_fd = mkstemp(format);
 	if (socket_listener->lock_port_fd == -1) {
 		dprintf(socket_listener->log_file, "[error-tabbed] make_socket_listener : mkstemp(%s) == -1\n",
