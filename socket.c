@@ -137,7 +137,6 @@ loop_listen_nonblocking(SocketListener* socket_listener, char* buffer, size_t si
 		}
 		/* dprintf(socket_listener->log_file, "[log-tabbed] loop_listen_nonblocking : poll ready: %d\n", ready); */
 
-		char buf[256];
 		if (socket_listener->poll_fds[0].revents != 0) {
 			/* if */ 
 			/* 	(!(socket_listener->poll_fds[0].revents & POLLIN || */ 
@@ -156,6 +155,7 @@ loop_listen_nonblocking(SocketListener* socket_listener, char* buffer, size_t si
 			/* 			(socket_listener->poll_fds[0].revents & POLLNVAL) ? "POLLNVAL " : ""); */
 			/* } */
 			if (socket_listener->poll_fds[0].revents & POLLIN) {
+				char buf[256];
 				ssize_t s = recv(socket_listener->poll_fds[0].fd, buf, sizeof(buf), 0);
 				if (s == -1) {
 					// When read error, exit and wait for another message (by recalling the loop)

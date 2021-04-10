@@ -27,24 +27,24 @@ For now, the only patched terminal to support this protocol is alacritty, see my
 A nix shell is configured so that you can get this setup running in a few commands.
 This shell builds the tabbed fork and this alacritty fork.
 
-1. First install nix see [https://nixos.org/guides/install-nix.html](https://nixos.org/guides/install-nix.html)
+ 1. First install nix see [https://nixos.org/guides/install-nix.html](https://nixos.org/guides/install-nix.html)
 I higly recommand you to check out the above link but normally this command should be enough : 
 ```shell_session
  $ sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
-2. Navigate to this repo
+ 2. Navigate to this repo
 ```shell_session
  $ cd ~/path/to/where/you/cloned/my/tabbed/fork
 ```
-3. enter the nix shell : 
+ 3. enter the nix shell : 
 ```shell_session
  $ nix-shell
 ```
-4. (in the nix shell) build the alacritty fork : 
+ 4. (in the nix shell) build the alacritty fork : 
 ```shell_session
  $ cargo build
 ```
-5. (still in the nix shell) run the tabbed alacritty : 
+ 5. (still in the nix shell) run the tabbed alacritty : 
 ```shell_session
  $ tabbed -cr 2 -w "--xembed-tcp-port" ./target/debug/alacritty --embed ""
 ```
@@ -76,7 +76,7 @@ The messages involved are :
 
 Now that the client is authentified, in other words, now that it knows its associated window's XID, it can enter the following two state loops :  
 
-**The communication loop**
+#### The communication loop
 
 [![](https://mermaid.ink/img/eyJjb2RlIjoic3RhdGVEaWFncmFtLXYyXG4gICAgc3RhdGUgXCJEaWQgSSByZWNlaXZlIGEgbWVzc2FnZSA_XCIgYXMgVDFcbiAgICBzdGF0ZSBcIklmIGl0J3MgYSBQV0QgQW5zd2VyLCBzYXZlIGl0IGZvciBsYXRlclwiIGFzIFNcblxuICAgIFsqXSAtLT4gVDFcbiAgICBUMSAtLT4gTm9cbiAgICBObyAtLT4gVDFcbiAgICBUMSAtLT4gWWVzXG4gICAgWWVzIC0tPiBTXG4gICAgUyAtLT4gVDFcbiIsIm1lcm1haWQiOnsidGhlbWUiOiJkZWZhdWx0In0sInVwZGF0ZUVkaXRvciI6ZmFsc2V9)](https://mermaid-js.github.io/mermaid-live-editor/#/edit/eyJjb2RlIjoic3RhdGVEaWFncmFtLXYyXG4gICAgc3RhdGUgXCJEaWQgSSByZWNlaXZlIGEgbWVzc2FnZSA_XCIgYXMgVDFcbiAgICBzdGF0ZSBcIklmIGl0J3MgYSBQV0QgQW5zd2VyLCBzYXZlIGl0IGZvciBsYXRlclwiIGFzIFNcblxuICAgIFsqXSAtLT4gVDFcbiAgICBUMSAtLT4gTm9cbiAgICBObyAtLT4gVDFcbiAgICBUMSAtLT4gWWVzXG4gICAgWWVzIC0tPiBTXG4gICAgUyAtLT4gVDFcbiIsIm1lcm1haWQiOnsidGhlbWUiOiJkZWZhdWx0In0sInVwZGF0ZUVkaXRvciI6ZmFsc2V9)
 
@@ -84,7 +84,7 @@ The **PWD** is the shell's working directory of the current focused window.
 It changes each time the user executes a `cd /somewhere/` command.  
 The message involved is : `PWD:/home/user`
 
-**The logic loop :**  
+#### The logic loop
 
 [![](https://mermaid.ink/img/eyJjb2RlIjoic3RhdGVEaWFncmFtLXYyXG4gICAgc3RhdGUgXCJBbSBJIHRoZSBmb2N1c2VkIHRhYiA_XCIgYXMgVDFcbiAgICBzdGF0ZSBcIlNsZWVwIE1vZGVcIiBhcyBTXG4gICAgc3RhdGUgXCJUdXJibyBNb2RlXCIgYXMgVFxuICAgIHN0YXRlIFwiVHJhbnNtaXQgdGhlIHNhdmVkIHNoZWxsIFBXRCB0byB0YWJiZWQgcGFyZW50IHByb2Nlc3MgaWYgYW55IHdhcyByZWNlaXZlZFwiIGFzIFBcbiAgICBzdGF0ZSBcIkFzayB3aW5kb3cgZm9yIHNoZWxsIFBXRFwiIGFzIEExXG5cblxuICAgIFsqXSAtLT4gVDFcbiAgICBUMSAtLT4gTm9cbiAgICBObyAtLT4gU1xuICAgIFMgLS0-IFQxXG4gICAgVDEgLS0-IFllc1xuICAgIFllcyAtLT4gVFxuICAgIFQgLS0-IFBcbiAgICBQIC0tPiBBMVxuICAgIEExIC0tPiBUMSAiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGVmYXVsdCJ9LCJ1cGRhdGVFZGl0b3IiOmZhbHNlfQ)](https://mermaid-js.github.io/mermaid-live-editor/#/edit/eyJjb2RlIjoic3RhdGVEaWFncmFtLXYyXG4gICAgc3RhdGUgXCJBbSBJIHRoZSBmb2N1c2VkIHRhYiA_XCIgYXMgVDFcbiAgICBzdGF0ZSBcIlNsZWVwIE1vZGVcIiBhcyBTXG4gICAgc3RhdGUgXCJUdXJibyBNb2RlXCIgYXMgVFxuICAgIHN0YXRlIFwiVHJhbnNtaXQgdGhlIHNhdmVkIHNoZWxsIFBXRCB0byB0YWJiZWQgcGFyZW50IHByb2Nlc3MgaWYgYW55IHdhcyByZWNlaXZlZFwiIGFzIFBcbiAgICBzdGF0ZSBcIkFzayB3aW5kb3cgZm9yIHNoZWxsIFBXRFwiIGFzIEExXG5cblxuICAgIFsqXSAtLT4gVDFcbiAgICBUMSAtLT4gTm9cbiAgICBObyAtLT4gU1xuICAgIFMgLS0-IFQxXG4gICAgVDEgLS0-IFllc1xuICAgIFllcyAtLT4gVFxuICAgIFQgLS0-IFBcbiAgICBQIC0tPiBBMVxuICAgIEExIC0tPiBUMSAiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGVmYXVsdCJ9LCJ1cGRhdGVFZGl0b3IiOmZhbHNlfQ)
 
@@ -96,24 +96,21 @@ And so it needs to transmit the flow of answers to the tabbed parent process.
 This is the **key system** that allows it to follow the working directories.
 Because the tabbed parent process always knows the PWD of the currently focused window's shell, it can spawn a new one at the good location.
 
-
 The messages involved are : `sleep`, `turbo` and `PWD?`
-
 
 ## License
 Tabbed is released under the [MIT/X Consortium License](https://git.suckless.org/tabbed/file/LICENSE.html)
 This few patches are released under the [MIT License](https://scott-hamilton.mit-license.org/)
 
 **References that helped**
-- [qubes-os markdown conventions] : <https://www.qubes-os.org/doc/doc-guidelines/#markdown-conventions>
-- [Linux man pages] : <https://linux.die.net/man/>
-- [TcpStream rust doc] : <https://docs.rs/mio/0.5.1/mio/tcp/struct.TcpStream.html>
-- [mermaid-js documentation] : <https://mermaid-js.github.io/mermaid/#/stateDiagram>
+  - [qubes-os markdown conventions] : <https://www.qubes-os.org/doc/doc-guidelines/#markdown-conventions>
+  - [Linux man pages] : <https://linux.die.net/man/>
+  - [TcpStream rust doc] : <https://docs.rs/mio/0.5.1/mio/tcp/struct.TcpStream.html>
+  - [mermaid-js documentation] : <https://mermaid-js.github.io/mermaid/#/stateDiagram>
 
-[//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
+# (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
    [qubes-os markdown conventions]: <https://www.qubes-os.org/doc/doc-guidelines/#markdown-conventions/>
    [linux man pages]: <https://linux.die.net/man/>
    [tcpstream rust doc]: <https://docs.rs/mio/0.5.1/mio/tcp/struct.TcpStream.html>
    [mermaid-js documentation]: <https://mermaid-js.github.io/mermaid/#/stateDiagram>
-

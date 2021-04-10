@@ -395,10 +395,6 @@ drawbar(void)
 		dc.w = ww;
 		unsigned long nitems;
 		SafeXFetchName(dpy, win, &name, &nitems);
-		if (name) {
-			fprintf(stderr, "name : `%s`:`%ld`\n",
-					name, nitems);
-		}
 		drawtext(name ? name : "", dc.norm, nitems);
 		XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, bh, 0, 0);
 		XSync(dpy, False);
@@ -1223,8 +1219,7 @@ void
 spawn(const Arg *arg)
 {
 	// Set working dir here...
-	if (xembed_port_option == NULL || strnlen(xembed_port_option, sizeof(xembed_port_option)) == 0
-			|| set_working_dir_option == NULL 
+	if (strnlen(xembed_port_option, sizeof(xembed_port_option)) == 0
 			|| strnlen(set_working_dir_option, sizeof(set_working_dir_option)) == 0) {
 		spawn_no_xembed_port(arg);
 		return;
@@ -1656,6 +1651,8 @@ main(int argc, char *argv[])
 	char *xstr;
 	int xembed_port_option_set = 0,
 		set_working_dir_option_set = 0;
+	xembed_port_option[0] = '\0';
+	set_working_dir_option[0] = '\0';
 
 	ARGBEGIN {
 	case 'c':
