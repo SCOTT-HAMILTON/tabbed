@@ -5,6 +5,7 @@
 <p align="center">
       <a href="https://scott-hamilton.mit-license.org/"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-525252.svg?labelColor=292929&logo=creative%20commons&style=for-the-badge" /></a>
 	  <a href="https://github.com/SCOTT-HAMILTON/tabbed/actions"><img alt="Build Status" src="https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2FSCOTT-HAMILTON%2Ftabbed%2Fbadge&style=for-the-badge" /></a>
+	  <a href="https://www.codacy.com/gh/SCOTT-HAMILTON/tabbed/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=SCOTT-HAMILTON/tabbed&amp;utm_campaign=Badge_Grade"><img alt="Code Quality" src="https://img.shields.io/codacy/grade/e3cfa183b64543df926a400c1fd0ac4c?style=for-the-badge" /></a>
 </p>
 
 <h1 align="center">Fork of Tabbed - The tab interface for application supporting Xembed </h1>
