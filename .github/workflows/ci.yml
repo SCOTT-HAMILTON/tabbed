@@ -22,7 +22,7 @@ jobs:
       - name: Fetch dependencies
         run: |
           sudo apt update
-          sudo apt install libx11-dev libxft-dev -y
+          sudo apt install libx11-dev libxft-dev libbsd-dev -y
       - name: Build
         run: make
 
