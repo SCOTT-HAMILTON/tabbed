@@ -183,8 +183,8 @@ static int log_file;
 static char TABBED_LOG_FILE[] = "tabbed-log-XXXXXX";
 static const int DEBUG_LEVEL = 0;
 
-static char xembed_port_option[128] = {0};
-static char set_working_dir_option[128] = {0};
+static char xembed_port_option[128];
+static char set_working_dir_option[128];
 static Display *dpy;
 static DC dc;
 static Atom wmatom[WMLast];
@@ -609,10 +609,12 @@ getatom(int a)
 
 	XGetWindowProperty(dpy, win, wmatom[a], 0L, BUFSIZ, False, XA_STRING,
 	                   &adummy, &idummy, &ldummy, &ldummy, &p);
-	if (p)
-		strncpy(buf, (char *)p, LENGTH(buf)-1);
-	else
+	if (p) {
 		buf[0] = '\0';
+		strncat(buf, (char *)p, LENGTH(buf)-1);
+	} else {
+		buf[0] = '\0';
+	}
 	XFree(p);
 
 	return buf;
@@ -676,10 +678,14 @@ gettextprop(Window w, Atom atom, char *text, unsigned int size)
 		return False;
 
 	if (name.encoding == XA_STRING) {
-		strncpy(text, (char *)name.value, size - 1);
+		// Paranoïa
+		text[0] = '\0';
+		strncat(text, (char *)name.value, size - 1);
 	} else if (XmbTextPropertyToTextList(dpy, &name, &list, &n) >= Success
 	           && n > 0 && *list) {
-		strncpy(text, *list, size - 1);
+		// Paranoïa again
+		text[0] = '\0';
+		strncat(text, *list, size - 1);
 		XFreeStringList(list);
 	}
 	text[size - 1] = '\0';
@@ -1259,13 +1265,15 @@ spawn(const Arg *arg)
 									timeoutms = 10;
 									was_focused = True;
 									/* dprintf(log_file, "[log-tabbed] won focus, asking client to enter turbo mode\n"); */
-									strncpy(send_buffer, "turbo", 63);
+									send_buffer[0] = '\0';
+									strncat(send_buffer, "turbo", 63);
 									socket_send(&socket_listener, send_buffer, 63);
 								}
 							} else if (was_focused) {
 								was_focused = False;
 								/* dprintf(log_file, "[log-tabbed] lost focus, asking client to enter sleep mode\n"); */
-								strncpy(send_buffer, "sleep", 63);
+								send_buffer[0] = '\0';
+								strncat(send_buffer, "sleep", 63);
 								socket_send(&socket_listener, send_buffer, 63);
 							}
 						}
@@ -1273,7 +1281,8 @@ spawn(const Arg *arg)
 							if (DEBUG_LEVEL == 1) {
 								dprintf(log_file, "[log-tabbed] asking for client XID?\n");
 							}
-							strncpy(send_buffer, "XID?", 63);
+							send_buffer[0] = '\0';
+							strncat(send_buffer, "XID?", 63);
 							if (socket_send(&socket_listener, send_buffer, 63) != -1) {
 								associated_client_xid_asked = True;
 							}
@@ -1286,7 +1295,8 @@ spawn(const Arg *arg)
 										// shared text string of size 256
 										char* shared_shellpwd = shared_memory->shell_pwd;
 										int* shellpwd_written = &shared_memory->shellpwd_written;
-										strncpy(shared_shellpwd, shell_pwd, 255);
+										shared_shellpwd[0] = '\0';
+										strncat(shared_shellpwd, shell_pwd, 255);
 										shared_shellpwd[strlen(shell_pwd)] = '\0';
 										*shellpwd_written = 1;
 
@@ -1303,7 +1313,8 @@ spawn(const Arg *arg)
 										if (DEBUG_LEVEL == 1) {
 											dprintf(log_file, "[log-tabbed] asking for client shell PWD?\n");
 										}
-										strncpy(send_buffer, "PWD?", 63);
+										send_buffer[0] = '\0';
+										strncat(send_buffer, "PWD?", 63);
 										socket_send(&socket_listener, send_buffer, 63);
 										char* shared_shellpwd = shared_memory->shell_pwd;
 										if (DEBUG_LEVEL == 1) {
@@ -1315,7 +1326,8 @@ spawn(const Arg *arg)
 								if (DEBUG_LEVEL == 1) {
 									dprintf(log_file, "[log-tabbed] asking for client XID?\n");
 								}
-								strncpy(send_buffer, "XID?", 63);
+								send_buffer[0] = '\0';
+								strncat(send_buffer, "XID?", 63);
 								if (socket_send(&socket_listener, send_buffer, 63) != -1) {
 									associated_client_xid_asked = True;
 								}
@@ -1332,7 +1344,8 @@ spawn(const Arg *arg)
 							// We received something !
 							if (strncmp(recv_buffer, "XID:", 4) == 0) {
 								char XID_buf[32];
-								strncpy(XID_buf, recv_buffer+4, 31-4);
+								XID_buf[0] = '\0';
+								strncat(XID_buf, recv_buffer+4, 31-4);
 								unsigned long XID = strtoul(XID_buf, NULL, 10);
 								if (XID == ULONG_MAX) {
 									dprintf(log_file, "[error-tabbed] invalid XID : strtoul(%s, 10) == ERROR\n",
@@ -1345,7 +1358,8 @@ spawn(const Arg *arg)
 							} else if (strncmp(recv_buffer, "PWD:", 4) == 0) {
 								/* dprintf(log_file, "[log-tabbed] client `%lu` wrote shell pwd `%s`\n", */
 								/* 		associated_client_xid, recv_buffer); */
-								strncpy(shell_pwd, recv_buffer+4, 255-4);
+								shell_pwd[0] = '\0';
+								strncat(shell_pwd, recv_buffer+4, 255-4);
 								if (!shell_pwd_set) {
 									dprintf(log_file, "[log-tabbed] Up and running in `%lu`ms\n",
 											get_posix_time()-shared_memory->debug_time);
@@ -1386,7 +1400,8 @@ spawn(const Arg *arg)
 						cmd[cmd_append_pos+1] = buf;
 						cmd[cmd_append_pos+2] = NULL;
 						if (*shellpwd_written) {
-							strncpy(buffer_shellpwd, shared_shellpwd, 255);
+							buffer_shellpwd[0] = '\0';
+							strncat(buffer_shellpwd, shared_shellpwd, 255);
 							insertcmd(buffer_shellpwd, strlen(buffer_shellpwd), 1);
 							insertcmd(set_working_dir_option, strlen(set_working_dir_option), 1);
 							// Bad position
@@ -1395,7 +1410,8 @@ spawn(const Arg *arg)
 						}
 					} else {
 						if (*shellpwd_written) {
-							strncpy(buffer_shellpwd, shared_shellpwd, 255);
+							buffer_shellpwd[0] = '\0';
+							strncat(buffer_shellpwd, shared_shellpwd, 255);
 							/* cmd[cmd_append_pos] = "--working-directory"; */
 							/* cmd[cmd_append_pos+1] = buffer_shellpwd; */
 						} else {
@@ -1545,11 +1561,13 @@ void
 updatetitle(int c)
 {
 	if (!gettextprop(clients[c]->win, wmatom[WMName], clients[c]->name,
-	    sizeof(clients[c]->name)))
+	    sizeof(clients[c]->name))) {
 		gettextprop(clients[c]->win, XA_WM_NAME, clients[c]->name,
 		            sizeof(clients[c]->name));
-	if (sel == c)
+	}
+	if (sel == c) {
 		xsettitle(win, clients[c]->name);
+	}
 	drawbar();
 }
 
@@ -1674,12 +1692,14 @@ main(int argc, char *argv[])
 		break;
 	case 'w':
 		wstr = EARGF(usage());
-		strncpy(set_working_dir_option, wstr, 127);
+		set_working_dir_option[0] = '\0';
+		strncat(set_working_dir_option, wstr, 127);
 		set_working_dir_option_set = 1;
 		break;
 	case 'x':
 		xstr = EARGF(usage());
-		strncpy(xembed_port_option, xstr, 127);
+		xembed_port_option[0] = '\0';
+		strncat(xembed_port_option, xstr, 127);
 		xembed_port_option_set = 1;
 		break;
 	default:
@@ -1690,7 +1710,8 @@ main(int argc, char *argv[])
 	if (!xembed_port_option_set) {
 		char* port_option = getenv("TABBED_XEMBED_PORT_OPTION");
 		if (port_option != NULL) {
-			strncpy(xembed_port_option, port_option, 127);
+			xembed_port_option[0] = '\0';
+			strncat(xembed_port_option, port_option, 127);
 			dprintf(log_file, "[log-tabbed]  TABBED_XEMBED_PORT_OPTION = `%s`\n",
 						xembed_port_option);
 		} else {
@@ -1700,7 +1721,8 @@ main(int argc, char *argv[])
 	if (!set_working_dir_option_set) {
 		char* port_option = getenv("TABBED_WORKING_DIR_OPTION");
 		if (port_option != NULL) {
-			strncpy(set_working_dir_option, port_option, 127);
+			set_working_dir_option[0] = '\0';
+			strncat(set_working_dir_option, port_option, 127);
 			dprintf(log_file, "[log-tabbed]  TABBED_WORKING_DIR_OPTION = `%s`\n",
 						set_working_dir_option);
 		} else {
