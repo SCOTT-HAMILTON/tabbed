@@ -24,6 +24,7 @@
 
 #include "arg.h"
 #include "socket.h"
+#include "SafeXFetchName.h"
 
 /* XEMBED messages */
 #define XEMBED_EMBEDDED_NOTIFY          0
@@ -51,7 +52,13 @@
 #define MIN(a, b)               ((a) < (b) ? (a) : (b))
 #define LENGTH(x)               (sizeof((x)) / sizeof(*(x)))
 #define CLEANMASK(mask)         (mask & ~(numlockmask | LockMask))
-#define TEXTW(x)                (textnw(x, strlen(x)) + dc.font.height)
+// To only be used with statically allocated strings
+// because of the sizeof
+#define TEXTW(x)                (textnw(x, strnlen(x, sizeof(x))) + dc.font.height)
+// Max size of string returned by XGetProperty
+// https://github.com/mirror/libX11/blob/192bbb9e2fc45df4e17b35b6d14ea0eb418dbd39/src/GetProp.c#L83
+// It's there to limit the problems if 
+#define MAX_XTEXT_SIZE			(INT_MAX>>4)*sizeof(char)
 
 enum { ColFG, ColBG, ColLast };       /* color */
 enum { WMProtocols, WMDelete, WMName, WMState, WMFullscreen,
@@ -114,7 +121,7 @@ static void createnotify(const XEvent *e);
 static void destroynotify(const XEvent *e);
 static void die(const char *errstr, ...);
 static void drawbar(void);
-static void drawtext(const char *text, XftColor col[ColLast]);
+static void drawtext(const char *text, XftColor col[ColLast], size_t size);
 static void *ecalloc(size_t n, size_t size);
 static void *erealloc(void *o, size_t size);
 static void expose(const XEvent *e);
@@ -386,8 +393,13 @@ drawbar(void)
 	if (nclients == 0) {
 		dc.x = 0;
 		dc.w = ww;
-		XFetchName(dpy, win, &name);
-		drawtext(name ? name : "", dc.norm);
+		unsigned long nitems;
+		SafeXFetchName(dpy, win, &name, &nitems);
+		if (name) {
+			fprintf(stderr, "name : `%s`:`%ld`\n",
+					name, nitems);
+		}
+		drawtext(name ? name : "", dc.norm, nitems);
 		XCopyArea(dpy, dc.drawable, win, dc.gc, 0, 0, ww, bh, 0, 0);
 		XSync(dpy, False);
 
@@ -402,14 +414,14 @@ drawbar(void)
 	if ((fc = getfirsttab()) + cc < nclients) {
 		dc.w = TEXTW(after);
 		dc.x = width - dc.w;
-		drawtext(after, dc.sel);
+		drawtext(after, dc.sel, sizeof(after));
 		width -= dc.w;
 	}
 	dc.x = 0;
 
 	if (fc > 0) {
 		dc.w = TEXTW(before);
-		drawtext(before, dc.sel);
+		drawtext(before, dc.sel, sizeof(before));
 		dc.x += dc.w;
 		width -= dc.w;
 	}
@@ -423,7 +435,8 @@ drawbar(void)
 		} else {
 			col = clients[c]->urgent ? dc.urg : dc.norm;
 		}
-		drawtext(clients[c]->name, col);
+		const size_t sizeof_client_name = sizeof(((Client*)0)->name);
+		drawtext(clients[c]->name, col, sizeof_client_name);
 		dc.x += dc.w;
 		clients[c]->tabx = dc.x;
 	}
@@ -432,7 +445,7 @@ drawbar(void)
 }
 
 void
-drawtext(const char *text, XftColor col[ColLast])
+drawtext(const char *text, XftColor col[ColLast], size_t size)
 {
 	int i, j, x, y, h, len, olen;
 	char buf[256];
@@ -444,7 +457,7 @@ drawtext(const char *text, XftColor col[ColLast])
 	if (!text)
 		return;
 
-	olen = strlen(text);
+	olen = strnlen(text, size);
 	h = dc.font.ascent + dc.font.descent;
 	y = dc.y + (dc.h / 2) - (h / 2) + dc.font.ascent;
 	x = dc.x + (h / 2);
@@ -458,7 +471,7 @@ drawtext(const char *text, XftColor col[ColLast])
 
 	memcpy(buf, text, len);
 	if (len < olen) {
-		for (i = len, j = strlen(titletrim); j && i;
+		for (i = len, j = strnlen(titletrim, sizeof(titletrim)); j && i;
 		     buf[--i] = titletrim[--j])
 			;
 	}
@@ -507,7 +520,7 @@ focus(int c)
 	/* If c, sel and clients are -1, raise tabbed-win itself */
 	if (nclients == 0) {
 		cmd[cmd_append_pos] = NULL;
-		for(i = 0, n = strlen(buf); cmd[i] && n < sizeof(buf); i++)
+		for(i = 0, n = strnlen(buf, BUFSIZ); cmd[i] && n < sizeof(buf); i++)
 			n += snprintf(&buf[n], sizeof(buf) - n, " %s", cmd[i]);
 
 		xsettitle(win, buf);
@@ -1210,8 +1223,9 @@ void
 spawn(const Arg *arg)
 {
 	// Set working dir here...
-	if (xembed_port_option == NULL || strlen(xembed_port_option) == 0
-			|| set_working_dir_option == NULL || strlen(set_working_dir_option) == 0) {
+	if (xembed_port_option == NULL || strnlen(xembed_port_option, sizeof(xembed_port_option)) == 0
+			|| set_working_dir_option == NULL 
+			|| strnlen(set_working_dir_option, sizeof(set_working_dir_option)) == 0) {
 		spawn_no_xembed_port(arg);
 		return;
 	} else if (fork() > 0) {
@@ -1303,7 +1317,7 @@ spawn(const Arg *arg)
 										int* shellpwd_written = &shared_memory->shellpwd_written;
 										shared_shellpwd[0] = '\0';
 										strlcat(shared_shellpwd, shell_pwd, 255);
-										shared_shellpwd[strlen(shell_pwd)] = '\0';
+										shared_shellpwd[strnlen(shell_pwd, sizeof(shell_pwd))] = '\0';
 										*shellpwd_written = 1;
 
 										if (DEBUG_LEVEL == 1) {
@@ -1400,7 +1414,8 @@ spawn(const Arg *arg)
 					// Can't use mmap share memory outside of this processus ?
 					char buffer_shellpwd[256];
 
-					if (strlen(xembed_port_option) != 0 && strlen(set_working_dir_option)) {
+					if (strnlen(xembed_port_option, sizeof(xembed_port_option)) 
+							!= 0 && strnlen(set_working_dir_option, sizeof(set_working_dir_option))) {
 						char buf[23];
 						snprintf(buf, 22, "%lu", socket_port);
 						cmd[cmd_append_pos] = xembed_port_option;
@@ -1408,9 +1423,11 @@ spawn(const Arg *arg)
 						cmd[cmd_append_pos+2] = NULL;
 						if (*shellpwd_written) {
 							buffer_shellpwd[0] = '\0';
-							strlcat(buffer_shellpwd, shared_shellpwd, 255);
-							insertcmd(buffer_shellpwd, strlen(buffer_shellpwd), 1);
-							insertcmd(set_working_dir_option, strlen(set_working_dir_option), 1);
+							strlcat(buffer_shellpwd, shared_shellpwd, sizeof(buffer_shellpwd)-1);
+							insertcmd(buffer_shellpwd,
+									strnlen(buffer_shellpwd, sizeof(buffer_shellpwd)), 1);
+							insertcmd(set_working_dir_option,
+									strnlen(set_working_dir_option, sizeof(set_working_dir_option)), 1);
 							// Bad position
 							/* cmd[cmd_append_pos+2] = "--working-directory"; */
 							/* cmd[cmd_append_pos+3] = buffer_shellpwd; */
