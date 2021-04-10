@@ -22,35 +22,34 @@ This project is a fork of tabbed. (A name needs to be found tho).
 It enables terminal emulators like alacritty to follow the previous working directory when opening a new tab.
 For now, the only patched terminal to support this protocol is alacritty, see my fork : [https://github.com/SCOTT-HAMILTON/alacritty](https://github.com/SCOTT-HAMILTON/alacritty)
 
-
 ## How to test it right know
 
 A nix shell is configured so that you can get this setup running in a few commands.
 This shell builds the tabbed fork and this alacritty fork.
 
- 1. First install nix see [https://nixos.org/guides/install-nix.html](https://nixos.org/guides/install-nix.html)
+1. First install nix see [https://nixos.org/guides/install-nix.html](https://nixos.org/guides/install-nix.html)
 I higly recommand you to check out the above link but normally this command should be enough : 
 ```shell_session
  $ sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
- 2. Navigate to this repo
+2. Navigate to this repo
 ```shell_session
  $ cd ~/path/to/where/you/cloned/my/tabbed/fork
 ```
- 3. enter the nix shell : 
+3. enter the nix shell : 
 ```shell_session
  $ nix-shell
 ```
- 4. (in the nix shell) build the alacritty fork : 
+4. (in the nix shell) build the alacritty fork : 
 ```shell_session
  $ cargo build
 ```
- 5. (still in the nix shell) run the tabbed alacritty : 
+5. (still in the nix shell) run the tabbed alacritty : 
 ```shell_session
  $ tabbed -cr 2 -w "--xembed-tcp-port" ./target/debug/alacritty --embed ""
 ```
 **Bonus for hackers**  
- 6. (still in the nix shell) run the tabbed alacritty and put debug logs in a separate file : 
+6. (still in the nix shell) run the tabbed alacritty and put debug logs in a separate file : 
 ```shell_session
  $ tabbed -cr 2 -w "--xembed-tcp-port" ./target/debug/alacritty --embed "" 2>&1 | ./filter_output.pl 'debug-' debug_logs /dev/stdout 2>&1
 ```
@@ -102,8 +101,8 @@ The messages involved are : `sleep`, `turbo` and `PWD?`
 
 
 ## License
-Tabbed is released under the \[MIT/X Consortium License].
-This few patches are released under the \[MIT License].
+Tabbed is released under the [MIT/X Consortium License](https://git.suckless.org/tabbed/file/LICENSE.html)
+This few patches are released under the [MIT License](https://scott-hamilton.mit-license.org/)
 
 **References that helped**
 - [qubes-os markdown conventions] : <https://www.qubes-os.org/doc/doc-guidelines/#markdown-conventions>
@@ -118,5 +117,3 @@ This few patches are released under the \[MIT License].
    [tcpstream rust doc]: <https://docs.rs/mio/0.5.1/mio/tcp/struct.TcpStream.html>
    [mermaid-js documentation]: <https://mermaid-js.github.io/mermaid/#/stateDiagram>
 
-[MIT/X Consortium License]: https://git.suckless.org/tabbed/file/LICENSE.html
-[MIT License]: https://scott-hamilton.mit-license.org/
