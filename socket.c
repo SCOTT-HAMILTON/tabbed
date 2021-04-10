@@ -241,7 +241,9 @@ loop_send(SocketListener* socket_listener)
 		QUEUE_POP(socket_listener->messages_queue, message);
 		/* dprintf(socket_listener->log_file, "[log-tabbed] loop_send : sending `%s`:%ld\n to fd `%d`", */
 		/* 		message->content, strlen(message->content), socket_listener->poll_fds[0].fd); */
-		if (send(socket_listener->poll_fds[0].fd, message->content, strlen(message->content), 0) == -1) {
+		const size_t sizeof_msg_content = sizeof(((struct msg*)0)->content);
+		if (send(socket_listener->poll_fds[0].fd, message->content,
+					strnlen(message->content, sizeof_msg_content), 0) == -1) {
 			dprintf(socket_listener->log_file, "[error-tabbed] socket_send : send(%u, %s) == -1\n",
 					socket_listener->poll_fds[0].fd, message->content);
 		}
@@ -344,6 +346,10 @@ int
 wait_for_socket_port_lock(SocketListener* socket_listener, int delay)
 {
 	struct stat statbuf = {.st_size = 0 };
+	struct timespec delay_time = {
+		.tv_sec = 0,
+		.tv_nsec = delay*1000000
+	};
 	// Wait until lock file is filled with port, 200ms delay between iterations
 	while (statbuf.st_size == 0) {
 		if (fstat(socket_listener->lock_port_fd, &statbuf) == -1) {
@@ -351,7 +357,7 @@ wait_for_socket_port_lock(SocketListener* socket_listener, int delay)
 					socket_listener->lock_port_fd);
 			return -1;
 		}
-		usleep(delay*1000);
+		nanosleep(&delay_time, NULL);
 	}
 	// fd is seeked to the end by the write call from the server,
 	// rewinding it for the read

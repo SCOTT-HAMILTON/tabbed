@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
@@ -1252,6 +1253,10 @@ spawn(const Arg *arg)
 					int* askforshellpwd = &shared_memory->askforshellpwd;
 					unsigned long* current_focused_window = &shared_memory->current_focused_window;
 					int was_focused = False;
+					struct timespec delay_time = {
+						.tv_sec = 0,
+						.tv_nsec = timeoutms*1000000
+					};
 					while (shared_memory->running) {
 						// timeout regulation system
 						// Only enabled once connection is setted up thus
@@ -1374,7 +1379,8 @@ spawn(const Arg *arg)
 						/* else if (ret == 0) {
 							// No error and not finished, continue looping
 						}*/
-						usleep(timeoutms*1000);
+						delay_time.tv_nsec = timeoutms*1000000;
+						nanosleep(&delay_time, NULL);
 					}
 					dprintf(log_file, "[log-tabbed] client communication on port `%u` terminated.\n",
 							socket_listener.socket_port);
