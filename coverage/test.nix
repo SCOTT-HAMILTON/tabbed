@@ -14,7 +14,7 @@ let
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
     export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'
-    timeout 5s tabbed -cr 2 alacritty --embed "" &
+    timeout 1m tabbed -cr 2 alacritty --embed "" &
   '';
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
@@ -53,13 +53,47 @@ in
       machine.sleep(2)
       machine.screenshot("window1")
       machine.wait_for_text("alice@machine")
-      out_dir = os.environ.get("out", os.getcwd())
+      
+      #### Normal Use case sequences
+      ### Goto /tmp
+      machine.send_chars("cd /tmp")
+      machine.send_key("ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedtmp")
+      ### Open a new tab
+      machine.send_key("ctrl-shift-ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedtmptab")
+      ### Goto /proc
+      machine.send_chars("cd /proc")
+      machine.send_key("ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedproc")
+      ### Open a new tab
+      machine.send_key("ctrl-shift-ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedproctab")
+      ### Goto ~ and exit proc tab
+      machine.send_chars("cd ~")
+      machine.send_key("ret")
+      machine.send_chars("exit")
+      machine.send_key("ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedproctabexit")
+      ### Goto ~ and exit tmp tab
+      machine.send_chars("cd ~")
+      machine.send_key("ret")
+      machine.send_chars("exit")
+      machine.send_key("ret")
+      machine.sleep(2)
+
       machine.succeed(
           "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
           "llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov",
       )
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
       machine.copy_from_vm("tabbed-alacritty.profdata", "coverage_data")
+      out_dir = os.environ.get("out", os.getcwd())
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )

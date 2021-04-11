@@ -18,6 +18,9 @@ with pkgs; mkShell {
       export TABBED_WORKING_DIR_OPTION="--working-directory"
       LLVM_PROFILE_FILE="tabbed-alacritty-%p.profraw" tabbed -cr 2 alacritty --embed ""
     }
+    show_test_report(){
+      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=result/coverage_data/tabbed-alacritty.profdata | less -R
+    }
     make_report(){
       llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata
       llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=tabbed-alacritty.profdata | less -R
