@@ -88,7 +88,9 @@ setup_nonblocking_listener(SocketListener* socket_listener)
 }
 
 // To be called continuously with delay between calls
-// until 1 is returned.
+// Returns -1 on error
+// Returns 0 on timeout
+// Returns 1 if the communication ended, (no more opened fds)
 // Returns 2 if a message is received
 // This non-blocking implementation avoids multithreading
 int
@@ -231,9 +233,11 @@ loop_listen_nonblocking(SocketListener* socket_listener, char* buffer, size_t si
 		/* dprintf(socket_listener->log_file, "[log-tabbed] loop_listen_nonblocking : all file descriptors closed; bye\n"); */
 		return 1;
 	}
+	// return timeout, though this shouldn't never be reached
+	return 0;
 }
 
-int
+void
 loop_send(SocketListener* socket_listener)
 {
 	if (QUEUE_SIZE(socket_listener->messages_queue) > 0) {
@@ -248,34 +252,6 @@ loop_send(SocketListener* socket_listener)
 					socket_listener->poll_fds[0].fd, message->content);
 		}
 	}
-}
-int
-run_blocking_socket_listener(SocketListener* socket_listener)
-{
-	if (setup_nonblocking_listener(socket_listener) == -1) {
-		dprintf(socket_listener->log_file, "[error-tabbed] run_blocking_socket_listener : setup failed, exitting...\n");
-		return -1;
-	} else {
-		dprintf(socket_listener->log_file, "[log-tabbed] run_blocking_socket_listener : starting to listen on port `%u`\n", socket_listener->socket_port);
-		// Timeout 200ms between iterations
-		char recv_buffer[64];
-		while (1) {
-			int ret = loop_listen_nonblocking(socket_listener, recv_buffer, 63, 200);
-			if (ret == -1) {
-				dprintf(socket_listener->log_file, "[error-tabbed] run_blocking_socket_listener : socket loop error, exitting\n");
-				return -1;
-			} else if (ret == 1) {
-				dprintf(socket_listener->log_file, "[log-tabbed] run_blocking_socket_listener : no more fd open, communication ended, XD !\n");
-				break;
-			} else if (ret == 2) {
-				dprintf(socket_listener->log_file, "[log-tabbed] run_blocking_socket_listener : received `%s`\n",
-						recv_buffer);
-			}/* else if (ret == 0) {
-				// No error and not finished, continue looping
-			}*/
-		}
-	}
-	return 0;
 }
 
 void

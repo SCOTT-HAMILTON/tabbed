@@ -1,1 +1,3 @@
 debug_logs
+coverage/*.profraw
+coverage/*.profdata

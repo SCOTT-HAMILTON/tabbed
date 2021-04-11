@@ -56,13 +56,8 @@ setup_nonblocking_listener(SocketListener* socket_listener);
 
 int
 loop_listen_nonblocking(SocketListener* socket_listener, char* message, size_t size, unsigned long timeout);
-int
+void
 loop_send(SocketListener* socket_listener);
-
-// Sets up the listener and runs the nonblocking loop
-// with a 200ms arbitrary delay between each iteration
-int
-run_blocking_socket_listener(SocketListener* socket_listener);
 
 // Internal, shouldn't be called
 void

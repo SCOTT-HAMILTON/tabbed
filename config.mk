@@ -22,8 +22,13 @@ LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 ${FREETYPELIBS} -lbsd
 
 # flags
 CPPFLAGS = -DVERSION=\"${VERSION}\" -D_DEFAULT_SOURCE
-CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS} -fprofile-arcs -ftest-coverage -fprofile-dir=/tmp
-LDFLAGS = -s ${LIBS} -fprofile-arcs
+
+CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
+LDFLAGS = -s ${LIBS}
+ifdef BUILD_INSTRUMENTED_COVERAGE
+	CFLAGS  += -fprofile-instr-generate -fcoverage-mapping
+	LDFLAGS += -fprofile-instr-generate -fcoverage-mapping
+endif
 
 # Solaris
 #CFLAGS = -fast ${INCS} -DVERSION=\"${VERSION}\"
