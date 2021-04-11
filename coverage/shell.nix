@@ -1,12 +1,9 @@
 { pkgs ? import <nixpkgs> {}}:
 let
   patched-alacritty = import ../alacritty.nix { inherit pkgs; };
-  patched-tabbed = pkgs.callPackage ../tabbed.nix { };
-  instrumented-tabbed = patched-tabbed.overrideAttrs (old: rec {
-    makeFlags = (old.makeFlags or []) ++ [
-      "BUILD_INSTRUMENTED_COVERAGE=1"
-    ];
-  });
+  instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
+    buildInstrumentedCoverage = true;
+  };
 in
 with pkgs; mkShell {
   propagatedBuildInputs = [
@@ -24,6 +21,9 @@ with pkgs; mkShell {
     make_report(){
       llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata
       llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=tabbed-alacritty.profdata | less -R
+    }
+    export_report_to_lcov(){
+      llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov
     }
   '';
 }

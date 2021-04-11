@@ -1,3 +1,5 @@
 debug_logs
 coverage/*.profraw
 coverage/*.profdata
+coverage/*.lcov
+coverage/result
