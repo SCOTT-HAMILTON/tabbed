@@ -4,3 +4,4 @@ coverage/*.profdata
 coverage/*.lcov
 coverage/result
 result
+tabbed-log-*
