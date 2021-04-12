@@ -1,6 +1,9 @@
 let
   # For extra determinism
-  nixpkgs = <nixpkgs>;
+  nixpkgs = builtins.fetchTarball {
+    url = "http://github.com/NixOS/nixpkgs/archive/d395190b24b27a65588f4539c423d9807ad8d4e7.tar.gz";
+    sha256 = "0r1kj8gf97z9ydh36vmgrar1q4l9ggaqiygxjvp8jmr1948y0nh2";
+  };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
   patched-alacritty = import ../alacritty.nix { inherit pkgs; };
