@@ -1,8 +1,12 @@
 let
   # For extra determinism
+  # nixpkgs = builtins.fetchTarball {
+  #   url = "http://github.com/mroi/nixpkgs/archive/839559b486d4c4dbd911a0f13a3b2d319b942cd5.tar.gz";
+  #   sha256 = "1g3d63ad09pssniszbjiz618rmrm2g7mj6pccrq5jll2zxzsadnz";
+  # };
   nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/mroi/nixpkgs/archive/839559b486d4c4dbd911a0f13a3b2d319b942cd5.tar.gz";
-    sha256 = "1g3d63ad09pssniszbjiz618rmrm2g7mj6pccrq5jll2zxzsadnz";
+    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/53609618ee43e1cc63fea05be99cfa5107689903.tar.gz";
+    sha256 = "1w4k8i8gc7rcdkxphpag6fdvfjp8vlg5fnr0dx3arrhha39vcyp1";
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
