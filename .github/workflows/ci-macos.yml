@@ -22,11 +22,11 @@ jobs:
           nix_path: nixpkgs=channel:nixos-20.09
       - name: Run coverage with Nix test-driver
         run: nix-build coverage/test.nix --show-trace
-      - name: Push coverage data to Codacy
-        if: github.event_name == 'push'
-        run: >
-          bash <(curl -Ls https://coverage.codacy.com/get.sh) report
-          --commit-uuid ${{ github.sha }}
-          --force-language C
-          -r result/coverage_data/tabbed-alacritty.lcov
+      # - name: Push coverage data to Codacy
+      #   if: github.event_name == 'push'
+      #   run: >
+      #     bash <(curl -Ls https://coverage.codacy.com/get.sh) report
+      #     --commit-uuid ${{ github.sha }}
+      #     --force-language C
+      #     -r result/coverage_data/tabbed-alacritty.lcov
 
