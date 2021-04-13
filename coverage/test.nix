@@ -6,7 +6,7 @@ let
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
-  patched-alacritty = import ../alacritty.nix { inherit pkgs; };
+  # patched-alacritty = import ../alacritty.nix { inherit pkgs; };
   instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
   };
@@ -31,7 +31,8 @@ in
         "${nixpkgs}/nixos/tests/common/x11.nix"
       ];
       environment.systemPackages = with pkgs; [
-        patched-alacritty
+        # patched-alacritty
+        alacritty
         llvmPackages_11.bintools
         instrumented-tabbed
         runTabbedAlacritty
