@@ -21,6 +21,12 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-20.09
       - name: Run coverage with Nix test-driver
+        run: >
+          nix-build '<nixpkgs/nixos>' \
+            --argstr system x86_64-linux \
+            --arg configuration '{ virtualisation.qemu.pkgs = import <nixpkgs> { system = "x86_64-darwin"; }; }' \
+            -A vm \
+            -I nixpkgs=http://github.com/SCOTT-HAMILTON/NixPkgs/archive/230f823cd985e499ff2fd450b419bc5b44c6dbf8.tar.gz
         run: nix-build coverage/test.nix --show-trace
       # - name: Push coverage data to Codacy
       #   if: github.event_name == 'push'

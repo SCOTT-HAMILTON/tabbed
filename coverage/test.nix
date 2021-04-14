@@ -5,8 +5,8 @@ let
   #   sha256 = "1g3d63ad09pssniszbjiz618rmrm2g7mj6pccrq5jll2zxzsadnz";
   # };
   nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/230f823cd985e499ff2fd450b419bc5b44c6dbf8.tar.gz";
-    sha256 = "05fapmsjl3fnnrjd40ph9pwgdymqdm66sapf100cp3c0h8aghq2a";
+    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/26bc66057a6041b2f30419b2abbb0dca4f456149.tar.gz";
+    sha256 = "1br29pj4c02jalfsz578nvam2w9jlvpw0945l8is98gif6gwai18";
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
@@ -26,6 +26,9 @@ let
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
     system = "x86_64-linux";
+    configuration = {
+      virtualisation.qemu.pkgs = import nixpkgs { system = "x86_64-darwin";};
+    };
 
     nodes.machine = { nodes, config, pkgs, ... }:
       let user = nodes.machine.config.users.users.alice;
