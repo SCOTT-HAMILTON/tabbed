@@ -5,8 +5,8 @@ let
   #   sha256 = "1g3d63ad09pssniszbjiz618rmrm2g7mj6pccrq5jll2zxzsadnz";
   # };
   nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/53609618ee43e1cc63fea05be99cfa5107689903.tar.gz";
-    sha256 = "1w4k8i8gc7rcdkxphpag6fdvfjp8vlg5fnr0dx3arrhha39vcyp1";
+    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/230f823cd985e499ff2fd450b419bc5b44c6dbf8.tar.gz";
+    sha256 = "05fapmsjl3fnnrjd40ph9pwgdymqdm66sapf100cp3c0h8aghq2a";
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
