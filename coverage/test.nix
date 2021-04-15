@@ -1,12 +1,8 @@
 let
   # For extra determinism
-  # nixpkgs = builtins.fetchTarball {
-  #   url = "http://github.com/mroi/nixpkgs/archive/839559b486d4c4dbd911a0f13a3b2d319b942cd5.tar.gz";
-  #   sha256 = "1g3d63ad09pssniszbjiz618rmrm2g7mj6pccrq5jll2zxzsadnz";
-  # };
   nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/SCOTT-HAMILTON/NixPkgs/archive/26bc66057a6041b2f30419b2abbb0dca4f456149.tar.gz";
-    sha256 = "1br29pj4c02jalfsz578nvam2w9jlvpw0945l8is98gif6gwai18";
+    url = "http://github.com/NixOS/nixpkgs/archive/d395190b24b27a65588f4539c423d9807ad8d4e7.tar.gz";
+    sha256 = "0r1kj8gf97z9ydh36vmgrar1q4l9ggaqiygxjvp8jmr1948y0nh2";
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
@@ -26,9 +22,6 @@ let
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
     system = "x86_64-linux";
-    configuration = {
-      virtualisation.qemu.pkgs = import nixpkgs { system = "x86_64-darwin";};
-    };
 
     nodes.machine = { nodes, config, pkgs, ... }:
       let user = nodes.machine.config.users.users.alice;
@@ -38,11 +31,9 @@ in
         "${nixpkgs}/nixos/tests/common/x11.nix"
       ];
       environment.systemPackages = with pkgs; [
-        # patched-alacritty
-        alacritty
+        patched-alacritty
         llvmPackages_11.bintools
-        # instrumented-tabbed
-        tabbed
+        instrumented-tabbed
         runTabbedAlacritty
         less
         coreutils
@@ -73,18 +64,18 @@ in
       machine.sleep(2)
       machine.screenshot("tabbedtmp")
       ### Open a new tab
-      # machine.send_key("ctrl-shift-ret")
-      # machine.sleep(2)
-      # machine.screenshot("tabbedtmptab")
+      machine.send_key("ctrl-shift-ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedtmptab")
       ### Goto /proc
       machine.send_chars("cd /proc")
       machine.send_key("ret")
       machine.sleep(2)
       machine.screenshot("tabbedproc")
       ### Open a new tab
-      # machine.send_key("ctrl-shift-ret")
-      # machine.sleep(2)
-      # machine.screenshot("tabbedproctab")
+      machine.send_key("ctrl-shift-ret")
+      machine.sleep(2)
+      machine.screenshot("tabbedproctab")
       ### Goto ~ and exit proc tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
@@ -99,16 +90,16 @@ in
       machine.send_key("ret")
       machine.sleep(2)
 
-      # machine.succeed(
-      #     "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
-      #     "llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov",
-      # )
-      # machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
-      # machine.copy_from_vm("tabbed-alacritty.profdata", "coverage_data")
-      # out_dir = os.environ.get("out", os.getcwd())
-      # eprint(
-      #     'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
-      # )
+      machine.succeed(
+          "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
+          "llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov",
+      )
+      machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
+      machine.copy_from_vm("tabbed-alacritty.profdata", "coverage_data")
+      out_dir = os.environ.get("out", os.getcwd())
+      eprint(
+          'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
+      )
       machine.screenshot("window2")
     '';
 })

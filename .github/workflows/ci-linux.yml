@@ -30,4 +30,18 @@ jobs:
           sudo apt install libx11-dev libxft-dev libbsd-dev -y
       - name: Build
         run: make CC=clang
+      - uses: cachix/install-nix-action@v13
+        if: github.event_name == 'push'
+        with:
+          nix_path: nixpkgs=channel:nixos-20.09
+          extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
+      - name: Run coverage with Nix test-driver
+        run: nix-build coverage/test.nix
+      - name: Push coverage data to Codacy
+        if: github.event_name == 'push'
+        run: >
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) report
+          --commit-uuid ${{ github.sha }}
+          --force-language C
+          -r result/coverage_data/tabbed-alacritty.lcov
 
