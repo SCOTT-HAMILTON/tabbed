@@ -16,16 +16,15 @@ let
     #!${pkgs.stdenv.shell}
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
-    export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'
-    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 ${patched-alacritty}/bin/alacritty --embed "" &
   '';
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
     system = "x86_64-linux";
 
     nodes.machine = { nodes, config, pkgs, ... }:
-      let user = nodes.machine.config.users.users.alice;
-    in {
+      # let user = nodes.machine.config.users.users.alice;
+      # in 
+      {
       imports = [
         "${nixpkgs}/nixos/tests/common/user-account.nix"
         "${nixpkgs}/nixos/tests/common/x11.nix"
@@ -38,7 +37,7 @@ in
         less
         coreutils
       ];
-      test-support.displayManager.auto.user = user.name;
+      # test-support.displayManager.auto.user = user.name;
     };
 
     enableOCR = true;
@@ -52,7 +51,12 @@ in
       machine.succeed("cp -r ${source} tabbed")
       machine.wait_for_x()
 
-      machine.succeed("su alice -c 'tabbed-alacritty'")
+      machine.succeed(
+          "export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'",
+          "export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'",
+          "export TABBED_WORKING_DIR_OPTION='--working-directory'",
+          'DISPLAY=:0.0 tabbed -cr 2 alacritty --embed "" &',
+      )
       machine.sleep(10)
       machine.screenshot("window1")
       # machine.wait_for_text("alice@machine")
