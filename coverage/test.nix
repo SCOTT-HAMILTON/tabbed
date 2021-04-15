@@ -17,7 +17,7 @@ let
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
     export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'
-    timeout 1m tabbed -cr 2 alacritty --embed "" &
+    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 ${patched-alacritty}/bin/alacritty --embed "" &
   '';
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
