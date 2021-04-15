@@ -53,42 +53,42 @@ in
       machine.wait_for_x()
 
       machine.succeed("su alice -c 'tabbed-alacritty'")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("window1")
-      machine.wait_for_text("alice@machine")
+      # machine.wait_for_text("alice@machine")
       
       #### Normal Use case sequences
       ### Goto /tmp
       machine.send_chars("cd /tmp")
       machine.send_key("ret")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("tabbedtmp")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("tabbedtmptab")
       ### Goto /proc
       machine.send_chars("cd /proc")
       machine.send_key("ret")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("tabbedproc")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("tabbedproctab")
       ### Goto ~ and exit proc tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(2)
+      machine.sleep(10)
       machine.screenshot("tabbedproctabexit")
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(2)
+      machine.sleep(10)
 
       machine.succeed(
           "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
