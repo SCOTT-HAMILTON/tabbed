@@ -6,9 +6,12 @@ let
   };
   pkgs = import nixpkgs {};
   # Single source of truth for all tutorial constants
-  patched-alacritty = import ../alacritty.nix { inherit pkgs; };
-  instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
+  patched-alacritty = with pkgs; lib.traceValFn 
+              (x: "Nixpkgs version ${lib.version}")
+              (import ../alacritty.nix { inherit pkgs; });
+  instrumented-tabbed = with pkgs; callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
+    inherit (nix-gitignore) gitignoreSource;
   };
   source = ../.;
 

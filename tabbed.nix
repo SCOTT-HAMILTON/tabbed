@@ -1,5 +1,6 @@
 { lib
 , llvmPackages_11
+, gitignoreSource
 , xorgproto
 , libX11
 , libXft
@@ -11,7 +12,7 @@
 llvmPackages_11.stdenv.mkDerivation {
   name = "tabbed-20180309-patched";
 
-  src = ./.;
+  src = gitignoreSource [] ./.;
 
   inherit patches;
 
