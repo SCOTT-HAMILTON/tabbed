@@ -1344,6 +1344,8 @@ void spawn(const Arg *arg) {
           dprintf(log_file, "[error-tabbed] failed to wait for socket port "
                             "lock, exitting...\n");
         } else {
+          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %d\n",
+				  socket_port);
           char *shared_shellpwd = shared_memory->shell_pwd;
           int *shellpwd_written = &shared_memory->shellpwd_written;
           // Can't use mmap share memory outside of this processus ?

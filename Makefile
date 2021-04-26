@@ -28,7 +28,7 @@ config.h:
 	@cp config.def.h $@
 
 .o:
-	@echo CC -o $@
+	@echo ${CC} -o $@ ${EXTRA_OBJ} $< ${LDFLAGS}
 	@${CC} -o $@ ${EXTRA_OBJ} $< ${LDFLAGS}
 
 clean:

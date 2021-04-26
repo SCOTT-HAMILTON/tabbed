@@ -1,6 +1,7 @@
 { lib
 , llvmPackages_11
 , gitignoreSource
+, autoPatchelfHook
 , xorgproto
 , libX11
 , libXft
@@ -8,6 +9,8 @@
 , customConfig ? null
 , buildInstrumentedCoverage ? false
 , patches ? []
+, binutils
+, gnugrep
 }:
 llvmPackages_11.stdenv.mkDerivation {
   name = "tabbed-20180309-patched";
@@ -20,7 +23,8 @@ llvmPackages_11.stdenv.mkDerivation {
   ''
     cp ${builtins.toFile "config.h" customConfig} ./config.h
   '';
-
+  
+  nativeBuildInputs = [ autoPatchelfHook ];
   buildInputs = [ xorgproto libX11 libXft libbsd ];
 
   makeFlags = [
@@ -29,6 +33,10 @@ llvmPackages_11.stdenv.mkDerivation {
   ] ++ lib.optional buildInstrumentedCoverage [
     "BUILD_INSTRUMENTED_COVERAGE=1"
   ];
+
+  postInstall = ''
+    readelf -a "$out/bin/tabbed" | grep llvm
+  '';
 
   meta = with lib; {
     homepage = "https://tools.suckless.org/tabbed";

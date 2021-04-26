@@ -1,8 +1,9 @@
 { pkgs ? import <nixpkgs> {}}:
 let
   patched-alacritty = import ../alacritty.nix { inherit pkgs; };
-  instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
+  instrumented-tabbed = with pkgs; callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
+    inherit (nix-gitignore) gitignoreSource;
   };
 in
 with pkgs; mkShell {
@@ -18,8 +19,11 @@ with pkgs; mkShell {
       export TABBED_WORKING_DIR_OPTION="--working-directory"
       LLVM_PROFILE_FILE="tabbed-alacritty-%p.profraw" tabbed -cr 2 alacritty --embed ""
     }
+    show_report(){
+      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=$1 | less -R
+    }
     show_test_report(){
-      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=result/coverage_data/tabbed-alacritty.profdata | less -R
+      show_report "result/coverage_data/tabbed-alacritty.profdata"
     }
     make_report(){
       llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata

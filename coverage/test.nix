@@ -19,28 +19,31 @@ let
     #!${pkgs.stdenv.shell}
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
+    export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'
+    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 alacritty --embed "" &
   '';
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
     system = "x86_64-linux";
 
     nodes.machine = { nodes, config, pkgs, ... }:
-      # let user = nodes.machine.config.users.users.alice;
-      # in 
-      {
+    {
       imports = [
         "${nixpkgs}/nixos/tests/common/user-account.nix"
         "${nixpkgs}/nixos/tests/common/x11.nix"
       ];
       environment.systemPackages = with pkgs; [
-        patched-alacritty
-        llvmPackages_11.bintools
-        instrumented-tabbed
-        runTabbedAlacritty
-        less
         coreutils
+        binutils
+        file
+        glibc
+        instrumented-tabbed
+        less
+        llvmPackages_11.bintools
+        gnugrep
+        patched-alacritty
+        runTabbedAlacritty
       ];
-      # test-support.displayManager.auto.user = user.name;
     };
 
     enableOCR = true;
@@ -55,47 +58,51 @@ in
       machine.wait_for_x()
 
       machine.succeed(
-          "export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'",
-          "export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'",
-          "export TABBED_WORKING_DIR_OPTION='--working-directory'",
-          'DISPLAY=:0.0 tabbed -cr 2 alacritty --embed "" &',
+          "echo BUILDED_IS : ${instrumented-tabbed}/bin 1>&2",
+          "echo STAT_IS : $(stat ${instrumented-tabbed}/bin/tabbed) 1>&2",
+          "echo STAT_IS : $(stat /run/current-system/sw/bin/tabbed) 1>&2",
+          "echo FILE_IS : $(file $(readlink /run/current-system/sw/bin/tabbed)) 1>&2",
+          "echo LDD_IS : $(ldd $(readlink /run/current-system/sw/bin/tabbed)) 1>&2",
+          "echo READELF_IS : $(readelf -a ${instrumented-tabbed}/bin/tabbed | grep llvm) 1>&2",
       )
-      machine.sleep(10)
-      machine.screenshot("window1")
-      # machine.wait_for_text("alice@machine")
+      machine.succeed("tabbed-alacritty")
+      # machine.wait_for_text("root@machine")
+      machine.sleep(5)
+      machine.screenshot("screen1")
       
       #### Normal Use case sequences
       ### Goto /tmp
       machine.send_chars("cd /tmp")
       machine.send_key("ret")
-      machine.sleep(10)
-      machine.screenshot("tabbedtmp")
+      machine.sleep(5)
+      machine.screenshot("screen2")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(10)
-      machine.screenshot("tabbedtmptab")
+      machine.sleep(5)
+      machine.screenshot("screen3")
       ### Goto /proc
       machine.send_chars("cd /proc")
       machine.send_key("ret")
-      machine.sleep(10)
-      machine.screenshot("tabbedproc")
+      machine.sleep(5)
+      machine.screenshot("screen4")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(10)
-      machine.screenshot("tabbedproctab")
+      machine.sleep(5)
+      machine.screenshot("screen5")
       ### Goto ~ and exit proc tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(10)
-      machine.screenshot("tabbedproctabexit")
+      machine.sleep(5)
+      machine.screenshot("screen6")
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(10)
+      machine.sleep(5)
+      machine.succeed("ls -lh 1>&2")
 
       machine.succeed(
           "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
@@ -107,6 +114,6 @@ in
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
-      machine.screenshot("window2")
+      machine.screenshot("screen7")
     '';
 })
