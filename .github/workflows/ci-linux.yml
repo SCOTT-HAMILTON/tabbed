@@ -41,7 +41,7 @@ jobs:
           name: code-coverage-report
           path: |
             result/coverage_data
-            result/screen*
+            result*/screen* # Dummy fix, see https://github.com/actions/upload-artifact/issues/92
       - name: Push coverage data to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
