@@ -33,15 +33,16 @@ jobs:
       - name: Run coverage with Nix test-driver
         run: |
           nix-build coverage/test.nix
+          cp -Lr result results
           ls -lh
-          ls -lh $(readlink result)
+          ls -lh results
       - name: Archive code coverage results
         uses: actions/upload-artifact@v2
         with:
           name: code-coverage-report
           path: |
-            result/coverage_data
-            resul*/screen* # Dummy fix, see https://github.com/actions/upload-artifact/issues/92
+            results/coverage_data
+            results/screen* # Dummy fix, see https://github.com/actions/upload-artifact/issues/92
       - name: Push coverage data to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1
         with:
