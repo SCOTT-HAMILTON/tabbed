@@ -20,14 +20,14 @@ with pkgs; mkShell {
       LLVM_PROFILE_FILE="tabbed-alacritty-%p.profraw" tabbed -cr 2 alacritty --embed ""
     }
     show_report(){
-      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=$1 | less -R
+      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -instr-profile=$1 | less -R
     }
     show_test_report(){
       show_report "result/coverage_data/tabbed-alacritty.profdata"
     }
     make_report(){
       llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata
-      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -path-equivalence=/build/tabbed,.. -instr-profile=tabbed-alacritty.profdata | less -R
+      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -instr-profile=tabbed-alacritty.profdata | less -R
     }
     export_report_to_lcov(){
       llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov

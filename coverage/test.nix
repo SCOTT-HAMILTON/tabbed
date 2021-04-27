@@ -57,14 +57,6 @@ in
       machine.succeed("cp -r ${source} tabbed")
       machine.wait_for_x()
 
-      machine.succeed(
-          "echo BUILDED_IS : ${instrumented-tabbed}/bin 1>&2",
-          "echo STAT_IS : $(stat ${instrumented-tabbed}/bin/tabbed) 1>&2",
-          "echo STAT_IS : $(stat /run/current-system/sw/bin/tabbed) 1>&2",
-          "echo FILE_IS : $(file $(readlink /run/current-system/sw/bin/tabbed)) 1>&2",
-          "echo LDD_IS : $(ldd $(readlink /run/current-system/sw/bin/tabbed)) 1>&2",
-          "echo READELF_IS : $(readelf -a ${instrumented-tabbed}/bin/tabbed | grep llvm) 1>&2",
-      )
       machine.succeed("tabbed-alacritty")
       # machine.wait_for_text("root@machine")
       machine.sleep(5)
