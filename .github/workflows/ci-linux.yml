@@ -30,6 +30,9 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-20.09
           extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
+      - uses: cachix/cachix-action@v9
+        with:
+          name: scott-hamilton
       - name: Run coverage with Nix test-driver
         run: |
           nix-build coverage/test.nix
