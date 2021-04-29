@@ -34,7 +34,7 @@ llvmPackages_11.stdenv.mkDerivation {
     "BUILD_INSTRUMENTED_COVERAGE=1"
   ];
 
-  postInstall = ''
+  postInstall = lib.optionalString buildInstrumentedCoverage ''
     readelf -a "$out/bin/tabbed" | grep llvm
   '';
 

@@ -1,14 +1,15 @@
 let
   # For extra determinism
   nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/NixOS/nixpkgs/archive/d395190b24b27a65588f4539c423d9807ad8d4e7.tar.gz";
-    sha256 = "0r1kj8gf97z9ydh36vmgrar1q4l9ggaqiygxjvp8jmr1948y0nh2";
+    url = "http://github.com/NixOS/nixpkgs/archive/389249fa9b35b3071b4ccf71a3c065e7791934df.tar.gz";
+    sha256 = "1z087f1m1k4pii2v2xai8n0yd3m57svgslzzbm7fwdjjzhn8g2rl";
   };
+  shamilton = import (builtins.fetchTarball {
+    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
+    sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
+  }) {};
   pkgs = import nixpkgs {};
-  # Single source of truth for all tutorial constants
-  patched-alacritty = with pkgs; lib.traceValFn 
-              (x: "Nixpkgs version ${lib.version}")
-              (import ../alacritty.nix { inherit pkgs; });
+  patched-alacritty = shamilton.patched-alacritty;
   instrumented-tabbed = with pkgs; callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
     inherit (nix-gitignore) gitignoreSource;
