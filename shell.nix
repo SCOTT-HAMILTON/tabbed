@@ -13,9 +13,12 @@ in
 with pkgs; mkShell {
   propagatedBuildInputs = [
     patched-alacritty
+    patched-tabbed
   ];
   shellHook = ''
-      # tabbed -cr 2 -w "--xembed-tcp-port" ./target/debug/alacritty --embed "" 2>&1 | ./filter_output.pl 'debug-' debug_logs /dev/stdout 2>&1
+      run(){
+        tabbed -cr 2 -x "--xembed-tcp-port" -w "--working-directory" alacritty --embed ""
+      }
   '';
 }
 

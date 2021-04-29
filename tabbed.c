@@ -155,12 +155,15 @@ static void propertynotify(const XEvent *e);
 static void resize(int c, int w, int h);
 static void rotate(const Arg *arg);
 static void run(void);
+static void setdefaultxembedevent(XEvent *e);
 static void sendxembed(int c, long msg, long detail, long d1, long d2);
 static void setcmd(int argc, char *argv[], int);
 static void insertcmd(char *command, size_t cmd_size, size_t pos);
 static void printcmds(int debug);
 static void setup(void);
 static void sigchld(int unused);
+static int execvpwitharg(const Arg *arg);
+static int sendxidrequest(char *send_buffer, SocketListener *socket_listener);
 static void spawn(const Arg *arg);
 static void spawn_no_xembed_port(const Arg *arg);
 static int textnw(const char *text, unsigned int len);
@@ -780,11 +783,8 @@ void manage(Window w) {
     XLowerWindow(dpy, w);
     XMapWindow(dpy, w);
 
+    setdefaultxembedevent(&e);
     e.xclient.window = w;
-    e.xclient.type = ClientMessage;
-    e.xclient.message_type = wmatom[XEmbed];
-    e.xclient.format = 32;
-    e.xclient.data.l[0] = CurrentTime;
     e.xclient.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
     e.xclient.data.l[2] = 0;
     e.xclient.data.l[3] = win;
@@ -949,14 +949,18 @@ void run(void) {
   }
 }
 
+void setdefaultxembedevent(XEvent *e) {
+  e->xclient.type = ClientMessage;
+  e->xclient.message_type = wmatom[XEmbed];
+  e->xclient.format = 32;
+  e->xclient.data.l[0] = CurrentTime;
+}
+
 void sendxembed(int c, long msg, long detail, long d1, long d2) {
   XEvent e = {0};
 
+  setdefaultxembedevent(&e);
   e.xclient.window = clients[c]->win;
-  e.xclient.type = ClientMessage;
-  e.xclient.message_type = wmatom[XEmbed];
-  e.xclient.format = 32;
-  e.xclient.data.l[0] = CurrentTime;
   e.xclient.data.l[1] = msg;
   e.xclient.data.l[2] = detail;
   e.xclient.data.l[3] = d1;
@@ -1133,6 +1137,26 @@ void sigchld(int unused) {
     ;
 }
 
+int execvpwitharg(const Arg *arg) {
+  setsid();
+  if (arg && arg->v) {
+    execvp(((char **)arg->v)[0], (char **)arg->v);
+    fprintf(stderr, "%s: execvp %s", argv0, ((char **)arg->v)[0]);
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
+int sendxidrequest(char *send_buffer, SocketListener *socket_listener) {
+  if (DEBUG_LEVEL == 1) {
+    dprintf(log_file, "[log-tabbed] asking for client XID?\n");
+  }
+  send_buffer[0] = '\0';
+  strlcat(send_buffer, "XID?", 63);
+  return (socket_send(socket_listener, send_buffer, 63) == -1);
+}
+
 void spawn(const Arg *arg) {
   // Set working dir here...
   if (strnlen(xembed_port_option, sizeof(xembed_port_option)) == 0 ||
@@ -1143,14 +1167,10 @@ void spawn(const Arg *arg) {
     if (dpy)
       close(ConnectionNumber(dpy));
 
-    setsid();
     int is_socket_server = 0;
-    if (arg && arg->v) {
-      execvp(((char **)arg->v)[0], (char **)arg->v);
-      fprintf(stderr, "%s: execvp %s", argv0, ((char **)arg->v)[0]);
-    } else {
+    // args are invalid
+    if (execvpwitharg(arg)) {
       // Setting up socket
-
       SocketListener socket_listener;
       unsigned long UNIQUE_ID = make_unique_id();
       make_socket_listener(&socket_listener, UNIQUE_ID);
@@ -1209,12 +1229,8 @@ void spawn(const Arg *arg) {
               }
             }
             if (!associated_client_xid_asked) {
-              if (DEBUG_LEVEL == 1) {
-                dprintf(log_file, "[log-tabbed] asking for client XID?\n");
-              }
-              send_buffer[0] = '\0';
-              strlcat(send_buffer, "XID?", 63);
-              if (socket_send(&socket_listener, send_buffer, 63) != -1) {
+              // Sending was successful
+              if (!sendxidrequest(send_buffer, &socket_listener)) {
                 associated_client_xid_asked = True;
               }
             }
@@ -1262,12 +1278,8 @@ void spawn(const Arg *arg) {
                   }
                 }
               } else if (!associated_client_xid_asked) {
-                if (DEBUG_LEVEL == 1) {
-                  dprintf(log_file, "[log-tabbed] asking for client XID?\n");
-                }
-                send_buffer[0] = '\0';
-                strlcat(send_buffer, "XID?", 63);
-                if (socket_send(&socket_listener, send_buffer, 63) != -1) {
+                // Sending was successful
+                if (!sendxidrequest(send_buffer, &socket_listener)) {
                   associated_client_xid_asked = True;
                 }
               }
@@ -1344,8 +1356,8 @@ void spawn(const Arg *arg) {
           dprintf(log_file, "[error-tabbed] failed to wait for socket port "
                             "lock, exitting...\n");
         } else {
-          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %d\n",
-				  socket_port);
+          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %lu\n",
+                  socket_port);
           char *shared_shellpwd = shared_memory->shell_pwd;
           int *shellpwd_written = &shared_memory->shellpwd_written;
           // Can't use mmap share memory outside of this processus ?
@@ -1403,11 +1415,8 @@ void spawn_no_xembed_port(const Arg *arg) {
     if (dpy)
       close(ConnectionNumber(dpy));
 
-    setsid();
-    if (arg && arg->v) {
-      execvp(((char **)arg->v)[0], (char **)arg->v);
-      fprintf(stderr, "%s: execvp %s", argv0, ((char **)arg->v)[0]);
-    } else {
+    // args are invalid
+    if (execvpwitharg(arg)) {
       cmd[cmd_append_pos] = NULL;
       execvp(cmd[0], cmd);
       dprintf(log_file, "%s: execvp %s", argv0, cmd[0]);
