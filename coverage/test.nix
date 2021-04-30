@@ -1,4 +1,5 @@
 let
+  str_sleep_time = builtins.toString 5;
   # For extra determinism
   nixpkgs = builtins.fetchTarball {
     url = "http://github.com/NixOS/nixpkgs/archive/389249fa9b35b3071b4ccf71a3c065e7791934df.tar.gz";
@@ -34,16 +35,15 @@ in
         "${nixpkgs}/nixos/tests/common/x11.nix"
       ];
       environment.systemPackages = with pkgs; [
-        coreutils
         binutils
-        file
+        coreutils
         glibc
-        instrumented-tabbed
-        less
-        llvmPackages_11.bintools
         gnugrep
+        instrumented-tabbed
+        llvmPackages_11.bintools
         patched-alacritty
         runTabbedAlacritty
+        xdotool
       ];
     };
 
@@ -60,41 +60,49 @@ in
 
       machine.succeed("tabbed-alacritty")
       # machine.wait_for_text("root@machine")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.screenshot("screen1")
       
       #### Normal Use case sequences
       ### Goto /tmp
       machine.send_chars("cd /tmp")
       machine.send_key("ret")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.screenshot("screen2")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.screenshot("screen3")
       ### Goto /proc
       machine.send_chars("cd /proc")
       machine.send_key("ret")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.screenshot("screen4")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.screenshot("screen5")
+      
+      ### click on middle tab
+      window_width = 1000
+      machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) {window_width} 500")
+      machine.succeed(f"xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1")
+      machine.sleep(${str_sleep_time})
+      machine.screenshot("screen6")
+
       ### Goto ~ and exit proc tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(5)
-      machine.screenshot("screen6")
+      machine.sleep(${str_sleep_time})
+      machine.screenshot("screen7")
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(5)
+      machine.sleep(${str_sleep_time})
       machine.succeed("ls -lh 1>&2")
 
       machine.succeed(
@@ -107,6 +115,6 @@ in
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
-      machine.screenshot("screen7")
+      machine.screenshot("screen8")
     '';
 })
