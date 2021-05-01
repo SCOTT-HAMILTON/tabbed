@@ -1,6 +1,10 @@
 { pkgs ? import <nixpkgs> {}}:
 let
-  patched-alacritty = import ../alacritty.nix { inherit pkgs; };
+  shamilton = import (builtins.fetchTarball {
+    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
+    sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
+  }) {};
+  patched-alacritty = shamilton.patched-alacritty;
   instrumented-tabbed = with pkgs; callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
     inherit (nix-gitignore) gitignoreSource;
@@ -20,7 +24,10 @@ with pkgs; mkShell {
       LLVM_PROFILE_FILE="tabbed-alacritty-%p.profraw" tabbed -cr 2 alacritty --embed ""
     }
     show_report(){
-      llvm-cov show ${instrumented-tabbed}/bin/tabbed -use-color -instr-profile=$1 | less -R
+      llvm-cov show ${instrumented-tabbed}/bin/tabbed \
+        -use-color \
+        -path-equivalence=/build/tabbed,.. \
+        -instr-profile=$1 | less -R
     }
     show_test_report(){
       show_report "result/coverage_data/tabbed-alacritty.profdata"
