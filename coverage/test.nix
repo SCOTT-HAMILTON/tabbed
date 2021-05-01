@@ -53,41 +53,43 @@ in
       import os
 
       start_all()
-      
+
+      sleep_time = int(${str_sleep_time})
+
       # Copy sources to tabbed directory
       machine.succeed("cp -r ${source} tabbed")
       machine.wait_for_x()
 
       machine.succeed("tabbed-alacritty")
       # machine.wait_for_text("root@machine")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time * 5)
       machine.screenshot("screen1")
       
       #### Normal Use case sequences
       ### Goto /tmp
       machine.send_chars("cd /tmp")
       machine.send_key("ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen2")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen3")
       ### Goto /proc
       machine.send_chars("cd /proc")
       machine.send_key("ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen4")
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen5")
       
       ### click on middle tab
       window_width = 1000
       machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) {window_width} 500")
       machine.succeed(f"xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen6")
 
       ### Goto ~ and exit proc tab
@@ -95,14 +97,14 @@ in
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.screenshot("screen7")
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.send_chars("exit")
       machine.send_key("ret")
-      machine.sleep(${str_sleep_time})
+      machine.sleep(sleep_time)
       machine.succeed("ls -lh 1>&2")
 
       machine.succeed(
