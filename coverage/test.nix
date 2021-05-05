@@ -59,6 +59,7 @@ in
         patched-alacritty
         runTabbedAlacritty
         xdotool
+        xlibs.xwininfo
       ];
     };
 
@@ -111,26 +112,30 @@ in
       ### click on middle tab
       window_width = 1000
       machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) {window_width} 500")
-      machine.succeed(f"xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1")
+      machine.succeed(
+          f"xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1 click 4 click 5 click 2"
+      )
       machine.sleep(sleep_time)
       machine.screenshot("screen6")
 
-      ### Goto ~ and exit proc tab
-      machine.send_chars("cd ~")
-      machine.send_key("ret")
-      machine.send_chars("exit")
-      machine.send_key("ret")
-      machine.sleep(sleep_time)
-      machine.screenshot("screen7")
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
-      machine.send_chars("exit")
-      machine.send_key("ret")
       machine.sleep(sleep_time)
-      machine.send_chars("exit")
-      machine.send_key("ret")
+      machine.screenshot("screen7")
+
+      ### Try to resize embedded window
+      machine.succeed("xwininfo -tree -root 1>&2")
+      machine.succeed(
+          'xdotool windowsize $(xwininfo -tree -root|grep "Alacritty"|head -n1|grep -Eo "0x([0-9]|[a-z])* ") 500 500'
+      )
       machine.sleep(sleep_time)
+      machine.screenshot("screen8")
+
+      # Close everything
+      machine.send_key("alt-f4")
+      machine.sleep(sleep_time)
+      machine.screenshot("screen9")
 
       machine.succeed("make-coverage-results 1>&2")
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
@@ -139,6 +144,6 @@ in
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
-      machine.screenshot("screen8")
+      machine.screenshot("screen10")
     '';
 })

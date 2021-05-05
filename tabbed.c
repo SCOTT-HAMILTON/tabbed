@@ -237,7 +237,6 @@ void *create_shared_memory(size_t size) {
   return mmap(NULL, size, protection, visibility, -1, 0);
 }
 void buttonpress(const XEvent *e) {
-  fprintf(stderr, "Button Pressed Lol\n");
   const XButtonPressedEvent *ev = &e->xbutton;
   int i, fc;
   Arg arg;

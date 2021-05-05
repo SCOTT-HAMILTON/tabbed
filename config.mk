@@ -27,8 +27,8 @@ CPPFLAGS = -DVERSION=\"${VERSION}\" -D_DEFAULT_SOURCE
 CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
 LDFLAGS = -s ${LIBS}
 ifdef BUILD_INSTRUMENTED_COVERAGE
-	CFLAGS  += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR)
-	LDFLAGS += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR)
+	CFLAGS  += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR) -g
+	LDFLAGS += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR) -g
 endif
 
 # Solaris
