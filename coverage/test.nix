@@ -5,13 +5,17 @@ let
     url = "http://github.com/NixOS/nixpkgs/archive/389249fa9b35b3071b4ccf71a3c065e7791934df.tar.gz";
     sha256 = "1z087f1m1k4pii2v2xai8n0yd3m57svgslzzbm7fwdjjzhn8g2rl";
   };
+  gcc11Pkgs = import (builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/tarball/d75d0b9";
+    sha256 = "14nabmj4xgamrz8nskzl595j1nkaxch1pssmw1dfr0xp0pbgf4cg";
+  }) {};
   shamilton = import (builtins.fetchTarball {
     url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
     sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
   }) {};
   pkgs = import nixpkgs {};
   patched-alacritty = shamilton.patched-alacritty;
-  instrumented-tabbed = with pkgs; callPackage ../tabbed.nix {
+  instrumented-tabbed = with gcc11Pkgs; callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
     inherit (nix-gitignore) gitignoreSource;
   };
@@ -21,8 +25,17 @@ let
     #!${pkgs.stdenv.shell}
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
-    export LLVM_PROFILE_FILE='tabbed-alacritty-%p.profraw'
-    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 alacritty --embed "" &
+    export SOURCE_DIR=/tmp
+    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 alacritty --embed "" 1>&2 &
+  '';
+  makeCoverageResults = pkgs.writeScriptBin "make-coverage-results" ''
+    #!${pkgs.stdenv.shell}
+    killall tabbed
+    ls -lh
+    gcov_drv=$(cat ${gcc11Pkgs.gcc11Stdenv.cc}/bin/gcc|tail -n5|head -n1|grep -Eo "/nix/.*/gcc"|rev|cut -d/ -f3-|rev)
+    lcov --gcov-tool "$gcov_drv/bin/gcov" --capture --base-directory . --directory . --output-file=tabbed-alacritty.lcov
+    mkdir res
+    genhtml tabbed-alacritty.lcov --output-directory res
   '';
 in
   import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
@@ -40,7 +53,9 @@ in
         glibc
         gnugrep
         instrumented-tabbed
-        llvmPackages_11.bintools
+        killall
+        lcov
+        makeCoverageResults
         patched-alacritty
         runTabbedAlacritty
         xdotool
@@ -57,7 +72,15 @@ in
       sleep_time = int(${str_sleep_time})
 
       # Copy sources to tabbed directory
-      machine.succeed("cp -r ${source} tabbed")
+      machine.succeed(
+          "find '${source}' -name '*.c' -exec cp {} /tmp \;"
+      )
+      machine.succeed(
+          "find '${source}' -name '*.h' -exec cp {} /tmp \;"
+      )
+      machine.succeed(
+          "find '${instrumented-tabbed}/share/gcno-tabbed' -name '*.gcno' -exec cp {} /tmp \;"
+      )
       machine.wait_for_x()
 
       machine.succeed("tabbed-alacritty")
@@ -105,14 +128,13 @@ in
       machine.send_chars("exit")
       machine.send_key("ret")
       machine.sleep(sleep_time)
-      machine.succeed("ls -lh 1>&2")
+      machine.send_chars("exit")
+      machine.send_key("ret")
+      machine.sleep(sleep_time)
 
-      machine.succeed(
-          "llvm-profdata merge -sparse *.profraw -o tabbed-alacritty.profdata",
-          "llvm-cov export ${instrumented-tabbed}/bin/tabbed -format=lcov -instr-profile=tabbed-alacritty.profdata > tabbed-alacritty.lcov",
-      )
+      machine.succeed("make-coverage-results 1>&2")
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
-      machine.copy_from_vm("tabbed-alacritty.profdata", "coverage_data")
+      machine.copy_from_vm("res", "coverage_data")
       out_dir = os.environ.get("out", os.getcwd())
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)

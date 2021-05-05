@@ -1,5 +1,5 @@
 { lib
-, llvmPackages_11
+, gcc11Stdenv
 , gitignoreSource
 , autoPatchelfHook
 , xorgproto
@@ -12,7 +12,7 @@
 , binutils
 , gnugrep
 }:
-llvmPackages_11.stdenv.mkDerivation {
+gcc11Stdenv.mkDerivation {
   name = "tabbed-20180309-patched";
 
   src = gitignoreSource [] ./.;
@@ -29,14 +29,9 @@ llvmPackages_11.stdenv.mkDerivation {
 
   makeFlags = [
     "PREFIX=$(out)"
-    "CC=clang"
   ] ++ lib.optional buildInstrumentedCoverage [
     "BUILD_INSTRUMENTED_COVERAGE=1"
   ];
-
-  postInstall = lib.optionalString buildInstrumentedCoverage ''
-    readelf -a "$out/bin/tabbed" | grep llvm
-  '';
 
   meta = with lib; {
     homepage = "https://tools.suckless.org/tabbed";

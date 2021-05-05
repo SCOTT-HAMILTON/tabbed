@@ -55,6 +55,11 @@ install: all
 	@chmod 644 "${DESTDIR}${MANPREFIX}/man1/tabbed.1"
 	@sed "s/VERSION/${VERSION}/g" < xembed.1 > "${DESTDIR}${MANPREFIX}/man1/xembed.1"
 	@chmod 644 "${DESTDIR}${MANPREFIX}/man1/xembed.1"
+ifdef BUILD_INSTRUMENTED_COVERAGE
+	@mkdir -p "${DESTDIR}${GCNOPREFIX}"
+	@echo installing gcov files
+	find . -name "*.gcno" -exec mv {} "${DESTDIR}${GCNOPREFIX}" \;
+endif
 
 uninstall:
 	@echo removing executable files from ${DESTDIR}${PREFIX}/bin
@@ -63,5 +68,9 @@ uninstall:
 	@echo removing manual pages from ${DESTDIR}${MANPREFIX}/man1
 	@rm -f "${DESTDIR}${MANPREFIX}/man1/tabbed.1"
 	@rm -f "${DESTDIR}${MANPREFIX}/man1/xembed.1"
+ifdef BUILD_INSTRUMENTED_COVERAGE
+	@echo installing gcov files
+	find "${DESTDIR}${GCNOPREFIX}" -name "*.gcno" -exec rm {} \;
+endif
 
 .PHONY: all options clean dist install uninstall

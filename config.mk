@@ -6,6 +6,7 @@ VERSION = 0.6
 # paths
 PREFIX = /usr/local
 MANPREFIX = ${PREFIX}/share/man
+GCNOPREFIX = ${PREFIX}/share/gcno-tabbed
 
 X11INC = /usr/X11R6/include
 X11LIB = /usr/X11R6/lib
@@ -26,8 +27,8 @@ CPPFLAGS = -DVERSION=\"${VERSION}\" -D_DEFAULT_SOURCE
 CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
 LDFLAGS = -s ${LIBS}
 ifdef BUILD_INSTRUMENTED_COVERAGE
-	CFLAGS  += -fprofile-instr-generate -fcoverage-mapping
-	LDFLAGS += -fprofile-instr-generate -fcoverage-mapping
+	CFLAGS  += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR)
+	LDFLAGS += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR)
 endif
 
 # Solaris

@@ -373,6 +373,9 @@ void die(const char *errstr, ...) {
   va_start(ap, errstr);
   vfprintf(stderr, errstr, ap);
   va_end(ap);
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+  __gcov_flush();
+#endif
   exit(EXIT_FAILURE);
 }
 
@@ -1345,6 +1348,9 @@ void spawn(const Arg *arg) {
               socket_listener.socket_port);
           cleanup_socket(&socket_listener);
           dprintf(log_file, "[log-tabbed] socket cleaned up.\n");
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+          __gcov_flush();
+#endif
         }
       } else {
         // Child
@@ -1406,6 +1412,9 @@ void spawn(const Arg *arg) {
     if (!is_socket_server) {
       dprintf(log_file, "Failed\n");
       perror(" failed");
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+      __gcov_flush();
+#endif
       exit(0);
     }
   }
