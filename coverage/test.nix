@@ -118,11 +118,28 @@ in
       machine.sleep(sleep_time)
       machine.screenshot("screen6")
 
+      ### Show left and right arrows
+      machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) 200 500")
+      machine.sleep(sleep_time)
+      machine.send_key("ctrl-shift-l")
+      machine.sleep(sleep_time)
+      machine.screenshot("screen7")
+
+      ### Fullscreen
+      machine.send_key("f11")
+      machine.sleep(sleep_time)
+      machine.screenshot("screen8")
+
+      ### Rotate right
+      machine.send_key("ctrl-shift-h")
+      machine.sleep(sleep_time)
+      machine.screenshot("screen9")
+
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.sleep(sleep_time)
-      machine.screenshot("screen7")
+      machine.screenshot("screen10")
 
       ### Try to resize embedded window
       machine.succeed("xwininfo -tree -root 1>&2")
@@ -130,12 +147,12 @@ in
           'xdotool windowsize $(xwininfo -tree -root|grep "Alacritty"|head -n1|grep -Eo "0x([0-9]|[a-z])* ") 500 500'
       )
       machine.sleep(sleep_time)
-      machine.screenshot("screen8")
+      machine.screenshot("screen11")
 
-      # Close everything
+      ### Close everything
       machine.send_key("alt-f4")
       machine.sleep(sleep_time)
-      machine.screenshot("screen9")
+      machine.screenshot("screen12")
 
       machine.succeed("make-coverage-results 1>&2")
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
@@ -144,6 +161,6 @@ in
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
-      machine.screenshot("screen10")
+      machine.screenshot("screen13")
     '';
 })

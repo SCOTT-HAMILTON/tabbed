@@ -21,6 +21,9 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+#include <gcov.h>
+#endif
 
 #include "SafeXFetchName.h"
 #include "arg.h"
@@ -373,7 +376,7 @@ void die(const char *errstr, ...) {
   vfprintf(stderr, errstr, ap);
   va_end(ap);
 #ifdef BUILD_INSTRUMENTED_COVERAGE
-  __gcov_flush();
+  __gcov_dump();
 #endif
   exit(EXIT_FAILURE);
 }
@@ -1143,6 +1146,9 @@ void sigchld(int unused) {
 int execvpwitharg(const Arg *arg) {
   setsid();
   if (arg && arg->v) {
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+    __gcov_dump();
+#endif
     execvp(((char **)arg->v)[0], (char **)arg->v);
     fprintf(stderr, "%s: execvp %s", argv0, ((char **)arg->v)[0]);
     return 0;
@@ -1348,7 +1354,7 @@ void spawn(const Arg *arg) {
           cleanup_socket(&socket_listener);
           dprintf(log_file, "[log-tabbed] socket cleaned up.\n");
 #ifdef BUILD_INSTRUMENTED_COVERAGE
-          __gcov_flush();
+          __gcov_dump();
 #endif
         }
       } else {
@@ -1403,6 +1409,9 @@ void spawn(const Arg *arg) {
           shared_memory->debug_time = get_posix_time();
           /* dprintf(log_file, "[debug-tabbed] cmd : `%s`\n",cmd[0]); */
           /* printcmds(True); */
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+          __gcov_dump();
+#endif
           execvp(cmd[0], cmd);
           dprintf(log_file, "%s: execvp %s", argv0, cmd[0]);
         }
@@ -1412,7 +1421,7 @@ void spawn(const Arg *arg) {
       dprintf(log_file, "Failed\n");
       perror(" failed");
 #ifdef BUILD_INSTRUMENTED_COVERAGE
-      __gcov_flush();
+      __gcov_dump();
 #endif
       exit(0);
     }
@@ -1427,6 +1436,9 @@ void spawn_no_xembed_port(const Arg *arg) {
     // args are invalid
     if (execvpwitharg(arg)) {
       cmd[cmd_append_pos] = NULL;
+#ifdef BUILD_INSTRUMENTED_COVERAGE
+      __gcov_dump();
+#endif
       execvp(cmd[0], cmd);
       dprintf(log_file, "%s: execvp %s", argv0, cmd[0]);
     }
