@@ -26,8 +26,18 @@ let
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
     export SOURCE_DIR=/tmp
-    timeout 10m ${instrumented-tabbed}/bin/tabbed -cr 2 alacritty --embed "" 1>&2 &
+    timeout 10m ${instrumented-tabbed}/bin/tabbed -g 500x500 -cr 2 alacritty --embed "" 1>&2 &
   '';
+
+  runAtomSpawn = pkgs.writeScriptBin "atom-spawn" ''
+    #!${pkgs.stdenv.shell}
+    main_id=$(xwininfo -tree -root|grep tabbed|head -n1|egrep -o "0x([0-9]|[a-z])* ")
+    fork_id=$(xwininfo -children -id $main_id|grep Alacritty|egrep -o "0x([0-9]|[a-z])* ")
+    echo "Main Id : $main_id"
+    echo "Fork Id : $fork_id"
+    xprop -id $main_id -f _TABBED_SELECT_TAB 8s -set _TABBED_SELECT_TAB $fork_id
+  '';
+
   makeCoverageResults = pkgs.writeScriptBin "make-coverage-results" ''
     #!${pkgs.stdenv.shell}
     killall tabbed
@@ -57,6 +67,7 @@ in
         lcov
         makeCoverageResults
         patched-alacritty
+        runAtomSpawn
         runTabbedAlacritty
         xdotool
         xlibs.xwininfo
@@ -130,16 +141,27 @@ in
       machine.sleep(sleep_time)
       machine.screenshot("screen8")
 
-      ### Rotate right
-      machine.send_key("ctrl-shift-h")
+      ### Rotate right and move tab left
+      machine.send_key("ctrl-shift-l")
+      machine.sleep(sleep_time)
+      machine.send_key("ctrl-shift-j")
       machine.sleep(sleep_time)
       machine.screenshot("screen9")
+
+      ### Focus urgent
+      machine.send_key("ctrl-u")
+      machine.sleep(sleep_time)
+      machine.screenshot("screen10")
+
+      ### Atom spawn
+      machine.succeed("atom-spawn")
+      machine.sleep(sleep_time)
 
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
       machine.sleep(sleep_time)
-      machine.screenshot("screen10")
+      machine.screenshot("screen11")
 
       ### Try to resize embedded window
       machine.succeed("xwininfo -tree -root 1>&2")
@@ -147,12 +169,12 @@ in
           'xdotool windowsize $(xwininfo -tree -root|grep "Alacritty"|head -n1|grep -Eo "0x([0-9]|[a-z])* ") 500 500'
       )
       machine.sleep(sleep_time)
-      machine.screenshot("screen11")
+      machine.screenshot("screen12")
 
       ### Close everything
       machine.send_key("alt-f4")
       machine.sleep(sleep_time)
-      machine.screenshot("screen12")
+      machine.screenshot("screen13")
 
       machine.succeed("make-coverage-results 1>&2")
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
@@ -161,6 +183,6 @@ in
       eprint(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
-      machine.screenshot("screen13")
+      machine.screenshot("screen14")
     '';
 })
