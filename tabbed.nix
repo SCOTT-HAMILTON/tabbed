@@ -6,6 +6,7 @@
 , libX11
 , libXft
 , libbsd
+, zeromq
 , customConfig ? null
 , buildInstrumentedCoverage ? false
 , patches ? []
@@ -25,7 +26,7 @@ gcc11Stdenv.mkDerivation {
   '';
   
   nativeBuildInputs = [ autoPatchelfHook ];
-  buildInputs = [ xorgproto libX11 libXft libbsd ];
+  buildInputs = [ xorgproto libX11 libXft libbsd zeromq ];
 
   makeFlags = [
     "PREFIX=$(out)"

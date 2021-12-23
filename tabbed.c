@@ -24,10 +24,12 @@
 #ifdef BUILD_INSTRUMENTED_COVERAGE
 #include <gcov.h>
 #endif
+#include <zmq.h>
 
 #include "SafeXFetchName.h"
 #include "arg.h"
-#include "socket.h"
+#include "utils.h"
+#include "zmq_server.h"
 
 /* XEMBED messages */
 #define XEMBED_EMBEDDED_NOTIFY 0
@@ -112,6 +114,7 @@ typedef struct {
 
 typedef struct {
   int askforshellpwd;
+  int server_port;
   unsigned long current_focused_window;
   int shellpwd_written;
   int shellpwd_read;
@@ -166,7 +169,7 @@ static void printcmds(int debug);
 static void setup(void);
 static void sigchld(int unused);
 static int execvpwitharg(const Arg *arg);
-static int sendxidrequest(char *send_buffer, SocketListener *socket_listener);
+/* static int sendxidrequest(char *send_buffer, SocketListener *socket_listener); */
 static void spawn(const Arg *arg);
 static void spawn_no_xembed_port(const Arg *arg);
 static int textnw(const char *text, unsigned int len);
@@ -202,8 +205,6 @@ static Bool running = True, nextfocus, doinitspawn = True, fillagain = False,
 /* static atomic_ulong current_focused_window; */
 static SharedMemory *shared_memory = NULL;
 static int log_file;
-static char TABBED_LOG_FILE[] = "tabbed-log-XXXXXX";
-static const int DEBUG_LEVEL = 0;
 
 static char xembed_port_option[128];
 static char set_working_dir_option[128];
@@ -306,8 +307,6 @@ void cleanup(void) {
               SHARED_MEMORY_SIZE);
     }
   }
-  unlink(TABBED_LOG_FILE);
-  close(log_file);
 }
 
 void clientmessage(const XEvent *e) {
@@ -1157,14 +1156,14 @@ int execvpwitharg(const Arg *arg) {
   }
 }
 
-int sendxidrequest(char *send_buffer, SocketListener *socket_listener) {
-  if (DEBUG_LEVEL == 1) {
-    dprintf(log_file, "[log-tabbed] asking for client XID?\n");
-  }
-  send_buffer[0] = '\0';
-  strlcat(send_buffer, "XID?", 63);
-  return (socket_send(socket_listener, send_buffer, 63) == -1);
-}
+/* int sendxidrequest(char *send_buffer, SocketListener *socket_listener) { */
+/*   if (DEBUG_LEVEL == 1) { */
+/*     dprintf(log_file, "[log-tabbed] asking for client XID?\n"); */
+/*   } */
+/*   send_buffer[0] = '\0'; */
+/*   strlcat(send_buffer, "XID?", 63); */
+/*   return (socket_send(socket_listener, send_buffer, 63) == -1); */
+/* } */
 
 void spawn(const Arg *arg) {
   // Set working dir here...
@@ -1180,195 +1179,47 @@ void spawn(const Arg *arg) {
     // args are invalid
     if (execvpwitharg(arg)) {
       // Setting up socket
-      SocketListener socket_listener;
-      unsigned long UNIQUE_ID = make_unique_id();
-      make_socket_listener(&socket_listener, UNIQUE_ID);
-      socket_listener.log_file = log_file;
+      
+      shared_memory->server_port = 0;
       if (fork() != 0) {
         is_socket_server = 1;
-        if (setup_nonblocking_listener(&socket_listener) == -1) {
-          dprintf(log_file, "[error-tabbed] setup failed, exitting...\n");
+        // Give port threw shared mem
+        ZmqServer server;
+        server.log_file = log_file;
+        if (zmq_server_bind(&server) != 0) {
+          shared_memory->server_port = -1;
+          return;
         } else {
-          if (DEBUG_LEVEL == 1) {
-            dprintf(log_file, "[log-tabbed] starting to listen on port `%u`\n",
-                    socket_listener.socket_port);
-          }
-          unsigned long associated_client_xid = 0;
-          char shell_pwd[256];
-          int associated_client_xid_asked = False,
-              associated_client_xid_set = False, shell_pwd_set = False;
-          int64_t last_pwd_ask_send_time = 0;
-          int timeoutms = 1;
-
-          char send_buffer[64];
-          char recv_buffer[256];
-
-          int *askforshellpwd = &shared_memory->askforshellpwd;
-          unsigned long *current_focused_window =
-              &shared_memory->current_focused_window;
-          int was_focused = False;
-          struct timespec delay_time = {.tv_sec = 0,
-                                        .tv_nsec = timeoutms * 1000000};
-          while (shared_memory->running) {
-            // timeout regulation system
-            // Only enabled once connection is setted up thus
-            // the shell_pwd_set test
-            if (associated_client_xid_set) {
-              /* dprintf(log_file, "[debug-tabbed] Running `%lu`\n", */
-              /* 		associated_client_xid); */
-            }
-            if (associated_client_xid_set && shell_pwd_set) {
-              if (*current_focused_window == associated_client_xid) {
-                if (!was_focused) {
-                  timeoutms = 10;
-                  was_focused = True;
-                  /* dprintf(log_file, "[log-tabbed] won focus, asking client to
-                   * enter turbo mode\n"); */
-                  send_buffer[0] = '\0';
-                  strlcat(send_buffer, "turbo", 63);
-                  socket_send(&socket_listener, send_buffer, 63);
-                }
-              } else if (was_focused) {
-                was_focused = False;
-                /* dprintf(log_file, "[log-tabbed] lost focus, asking client to
-                 * enter sleep mode\n"); */
-                send_buffer[0] = '\0';
-                strlcat(send_buffer, "sleep", 63);
-                socket_send(&socket_listener, send_buffer, 63);
-              }
-            }
-            if (!associated_client_xid_asked) {
-              // Sending was successful
-              if (!sendxidrequest(send_buffer, &socket_listener)) {
-                associated_client_xid_asked = True;
-              }
-            }
-            if (*askforshellpwd) {
-              /* dprintf(log_file, "[log-tabbed]
-               * current:%lu,myid:%lu,diff:%ld\n", */
-              /* 		*current_focused_window, associated_client_xid,
-               * get_posix_time()-last_pwd_ask_send_time); */
-              if (associated_client_xid_set) {
-                if (*current_focused_window == associated_client_xid) {
-                  if (shell_pwd_set) {
-                    // shared text string of size 256
-                    char *shared_shellpwd = shared_memory->shell_pwd;
-                    int *shellpwd_written = &shared_memory->shellpwd_written;
-                    shared_shellpwd[0] = '\0';
-                    strlcat(shared_shellpwd, shell_pwd, 255);
-                    shared_shellpwd[strnlen(shell_pwd, sizeof(shell_pwd))] =
-                        '\0';
-                    *shellpwd_written = 1;
-
-                    if (DEBUG_LEVEL == 1) {
-                      dprintf(
-                          log_file,
-                          "[log-tabbed] client `%lu` wrote shell pwd `%s`\n",
-                          associated_client_xid, shell_pwd);
-                    }
-                  }
-                  int64_t time = get_posix_time();
-                  if (time == -1) {
-                    dprintf(log_file, "[error-tabbed] can't get time...\n");
-                  } else if (time - last_pwd_ask_send_time > 500) {
-                    last_pwd_ask_send_time = time;
-                    if (DEBUG_LEVEL == 1) {
-                      dprintf(log_file,
-                              "[log-tabbed] asking for client shell PWD?\n");
-                    }
-                    send_buffer[0] = '\0';
-                    strlcat(send_buffer, "PWD?", 63);
-                    socket_send(&socket_listener, send_buffer, 63);
-                    char *shared_shellpwd = shared_memory->shell_pwd;
-                    if (DEBUG_LEVEL == 1) {
-                      dprintf(log_file, "last shared_shellpwd : `%s`\n",
-                              shared_shellpwd);
-                    }
-                  }
-                }
-              } else if (!associated_client_xid_asked) {
-                // Sending was successful
-                if (!sendxidrequest(send_buffer, &socket_listener)) {
-                  associated_client_xid_asked = True;
-                }
-              }
-            }
-            int ret = loop_listen_nonblocking(&socket_listener, recv_buffer,
-                                              255, timeoutms);
-            if (ret == -1) {
-              dprintf(log_file, "[error-tabbed] socket loop error, exitting\n");
-              break;
-            } else if (ret == 1) {
-              dprintf(
-                  log_file,
-                  "[log-tabbed] no more fd open, communication ended, XD !\n");
-              break;
-            } else if (ret == 2) {
-              // We received something !
-              if (strncmp(recv_buffer, "XID:", 4) == 0) {
-                char XID_buf[32];
-                XID_buf[0] = '\0';
-                strlcat(XID_buf, recv_buffer + 4, 31 - 4);
-                unsigned long XID = strtoul(XID_buf, NULL, 10);
-                if (XID == ULONG_MAX) {
-                  dprintf(
-                      log_file,
-                      "[error-tabbed] invalid XID : strtoul(%s, 10) == ERROR\n",
-                      XID_buf);
-                } else {
-                  associated_client_xid = XID;
-                  associated_client_xid_set = True;
-                  dprintf(log_file,
-                          "[log-tabbed] received client's XID : `%lu`\n",
-                          associated_client_xid);
-                }
-              } else if (strncmp(recv_buffer, "PWD:", 4) == 0) {
-                /* dprintf(log_file, "[log-tabbed] client `%lu` wrote shell pwd
-                 * `%s`\n", */
-                /* 		associated_client_xid, recv_buffer); */
-                shell_pwd[0] = '\0';
-                strlcat(shell_pwd, recv_buffer + 4, 255 - 4);
-                if (!shell_pwd_set) {
-                  dprintf(log_file, "[log-tabbed] Up and running in `%lu`ms\n",
-                          get_posix_time() - shared_memory->debug_time);
-                }
-                shell_pwd_set = True;
-                /* dprintf(log_file, "[log-tabbed] received client's PWD :
-                 * `%s`\n", shell_pwd); */
-              } else {
-                dprintf(log_file,
-                        "[error-tabbed] received unknown command : `%s`\n",
-                        recv_buffer);
-              }
-            }
-            /* else if (ret == 0) {
-                    // No error and not finished, continue looping
-            }*/
-            delay_time.tv_nsec = timeoutms * 1000000;
-            nanosleep(&delay_time, NULL);
-          }
-          dprintf(
-              log_file,
-              "[log-tabbed] client communication on port `%u` terminated.\n",
-              socket_listener.socket_port);
-          cleanup_socket(&socket_listener);
-          dprintf(log_file, "[log-tabbed] socket cleaned up.\n");
-#ifdef BUILD_INSTRUMENTED_COVERAGE
-          __gcov_dump();
-#endif
+          shared_memory->server_port = server.port;
         }
+        dprintf(log_file, "[log-tabbed] server port is %d\n",
+                server.port);
+        size_t RECV_BUF_SIZE = 256;
+        char recv_buf[RECV_BUF_SIZE];
+        while (shared_memory->running) {
+          if (zmq_server_recv_nb(&server, recv_buf, RECV_BUF_SIZE) == 0) {
+            /* dprintf(log_file, "[log-tabbed] received msg: `%s`.\n", */
+            /*         recv_buf); */
+          } else {
+            sleep_ms(100);
+          }
+        }
+        zmq_server_destroy(&server);
       } else {
         // Child
         // Should wait until lock port file exists
         // Wait until lock file is filled with port, 1ms delay between
         // iterations
-        unsigned long socket_port =
-            wait_for_socket_port_lock(&socket_listener, 1);
-        if (socket_port == -1) {
-          dprintf(log_file, "[error-tabbed] failed to wait for socket port "
-                            "lock, exitting...\n");
+        int socket_port = 0;
+        while (socket_port == 0) {
+          socket_port = shared_memory->server_port;
+          sleep_ms(100);
+        }
+        if (socket_port <= 1024 || socket_port > 80000) {
+          dprintf(log_file, "[error-tabbed] got invalid port: %d"
+                            ", exitting...\n", socket_port);
         } else {
-          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %lu\n",
+          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %d\n",
                   socket_port);
           char *shared_shellpwd = shared_memory->shell_pwd;
           int *shellpwd_written = &shared_memory->shellpwd_written;
@@ -1378,7 +1229,7 @@ void spawn(const Arg *arg) {
           if (strnlen(xembed_port_option, sizeof(xembed_port_option)) != 0 &&
               strnlen(set_working_dir_option, sizeof(set_working_dir_option))) {
             char buf[23];
-            snprintf(buf, 22, "%lu", socket_port);
+            snprintf(buf, 22, "%d", socket_port);
             cmd[cmd_append_pos] = xembed_port_option;
             cmd[cmd_append_pos + 1] = buf;
             cmd[cmd_append_pos + 2] = NULL;
@@ -1699,13 +1550,14 @@ int main(int argc, char *argv[]) {
     doinitspawn = False;
     fillagain = False;
   }
-  log_file = mkstemp(TABBED_LOG_FILE);
-  if (log_file == -1) {
-    dprintf(log_file,
-            "[error-tabbed] can't make log file : mkstemp(%s) == -1\n",
-            TABBED_LOG_FILE);
-    return -1;
-  }
+  /* log_file = mkstemp(TABBED_LOG_FILE); */
+  /* if (log_file == -1) { */
+  /*   dprintf(log_file, */
+  /*           "[error-tabbed] can't make log file : mkstemp(%s) == -1\n", */
+  /*           TABBED_LOG_FILE); */
+  /*   return -1; */
+  /* } */
+  log_file = 2;
 
   // Initialize shared memory for
   shared_memory = (SharedMemory *)create_shared_memory(SHARED_MEMORY_SIZE);

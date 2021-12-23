@@ -2,8 +2,8 @@
 let
   lib = pkgs.lib;
   shamilton = import (builtins.fetchTarball {
-    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
-    sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
+    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/4c164c6";
+    sha256 = "1ir3414wkc44lq335ziiqxk7vwsdh0wb4lqprki58ndppyvp8wsb";
   }) {};
   patched-tabbed = with pkgs; callPackage ./tabbed.nix {
     inherit (nix-gitignore) gitignoreSource;

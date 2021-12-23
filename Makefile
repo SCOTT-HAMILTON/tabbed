@@ -4,7 +4,7 @@
 include config.mk
 
 SRC = tabbed.c xembed.c
-EXTRA_OBJ = socket.c
+EXTRA_OBJ = zmq_server.c
 OBJ = ${SRC:.c=.o} ${EXTRA_OBJ}
 BIN = ${OBJ:.o=}
 
