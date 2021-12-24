@@ -7,7 +7,7 @@
 int zmq_server_bind(ZmqServer *server) {
   server->context = zmq_ctx_new ();
   server->socket = zmq_socket (server->context, ZMQ_PAIR);
-  int rc = zmq_bind (server->socket, "tcp://*:*");
+  int rc = zmq_bind (server->socket, "tcp://0.0.0.0:*");
   if (rc != 0) {
     dprintf (server->log_file, "[error-tabbed] zmq_bind failed: %s\n",
         zmq_strerror (errno));
@@ -45,17 +45,11 @@ int zmq_server_get_port(ZmqServer *server) {
         zmq_strerror (errno));
     return -1;
   } else {
-    dprintf (server->log_file,
-        "[debug-tabbed] bound address: `%s`\n", bind_address);
     char* portStr = strrchr (bind_address, ':') + 1;
-    dprintf (server->log_file,
-        "[debug-tabbed] portStr: `%s`\n", portStr);
     int result = strtoul(portStr, NULL, 10);
     if (result == ULONG_MAX) {
       return -1;
     } else {
-      dprintf (server->log_file,
-          "[debug-tabbed] result: `%d`\n", result);
       return result;
     }
   }
@@ -75,14 +69,16 @@ int zmq_server_recv_nb(ZmqServer *server, char* buf, int bufsize) {
     return -1;
   }
   int nbytes = zmq_msg_recv (&msg, server->socket, ZMQ_DONTWAIT);
-  if (nbytes == -1 && errno != EAGAIN) {
-    dprintf (server->log_file,
-        "[error-tabbed] zmq_msg_recv failed: %s\n",
-        zmq_strerror (errno));
+  if (nbytes == -1) {
+    if (errno != EAGAIN) {
+      dprintf (server->log_file,
+          "[error-tabbed] zmq_msg_recv failed: %s\n",
+          zmq_strerror (errno));
+    }
     return -1;
   }
   size_t msgsize = zmq_msg_size(&msg);
-  int max = (bufsize-2)*sizeof(char);
+  int max = bufsize-2;
   if (msgsize > max) {
     dprintf (server->log_file,
         "[error-tabbed] received message too big, exceeding buffer"
@@ -90,7 +86,32 @@ int zmq_server_recv_nb(ZmqServer *server, char* buf, int bufsize) {
     return -1;
   }
   memcpy (buf, zmq_msg_data (&msg), msgsize);
+  buf[msgsize] = '\0';
+  /* dprintf (server->log_file, "[error-tabbed] msg size: %lu\n", msgsize); */
   return 0;
+}
+
+void zmq_server_send(ZmqServer* server, const char* message, size_t size) {
+  zmq_msg_t msg;
+  int rc = zmq_msg_init_size (&msg, (size + 2));
+
+  if (rc != 0) {
+    dprintf (server->log_file, "[error-tabbed] zmq_bind failed: %s\n",
+        zmq_strerror (errno));
+    return;
+  }
+  memcpy (zmq_msg_data (&msg), message, size);
+  rc = zmq_msg_send (&msg, server->socket, ZMQ_DONTWAIT);
+  if (rc != size) {
+    if (errno != EAGAIN) {
+      dprintf (server->log_file,
+          "[error-tabbed] zmq_msg_send failed: "
+          "%d bytes send, expected it to be %lu: %s\n.",
+          rc, size, zmq_strerror (errno));
+    }
+  }
+  dprintf (server->log_file,
+      "[log-tabbed] sent msg `%s`.\n", message);
 }
 
 void zmq_server_destroy(ZmqServer *server) {

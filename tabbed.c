@@ -65,6 +65,9 @@
 // It's there to limit the problems if
 #define MAX_XTEXT_SIZE (INT_MAX >> 4) * sizeof(char)
 
+#define TIMEOUT_TURBO_MODE_MS 100
+#define TIMEOUT_SLEEP_MODE_MS 1000
+
 enum { ColFG, ColBG, ColLast }; /* color */
 enum {
   WMProtocols,
@@ -113,7 +116,7 @@ typedef struct {
 } Client;
 
 typedef struct {
-  int askforshellpwd;
+  int needshellpwd;
   int server_port;
   unsigned long current_focused_window;
   int shellpwd_written;
@@ -169,7 +172,6 @@ static void printcmds(int debug);
 static void setup(void);
 static void sigchld(int unused);
 static int execvpwitharg(const Arg *arg);
-/* static int sendxidrequest(char *send_buffer, SocketListener *socket_listener); */
 static void spawn(const Arg *arg);
 static void spawn_no_xembed_port(const Arg *arg);
 static int textnw(const char *text, unsigned int len);
@@ -201,8 +203,6 @@ static int bh, wx, wy, ww, wh;
 static unsigned int numlockmask;
 static Bool running = True, nextfocus, doinitspawn = True, fillagain = False,
             closelastclient = False, killclientsfirst = False;
-/* static atomic_bool askforshellpwd = True; */
-/* static atomic_ulong current_focused_window; */
 static SharedMemory *shared_memory = NULL;
 static int log_file;
 
@@ -537,15 +537,15 @@ void focus(int c) {
   drawbar();
   XSync(dpy, False);
 
-  int *askforshellpwd = &shared_memory->askforshellpwd;
+  int *needshellpwd = &shared_memory->needshellpwd;
   unsigned long *current_focused_window =
       &shared_memory->current_focused_window;
   *current_focused_window = clients[c]->win;
-  *askforshellpwd = True;
+  *needshellpwd = True;
   dprintf(log_file,
-          "[log-tabbed] New current focused window ID : `%ld`, askforshellpwd "
+          "[log-tabbed] New current focused window ID : `%ld`, needshellpwd "
           ": `%s`\n",
-          *current_focused_window, (*askforshellpwd) ? "True" : "False");
+          *current_focused_window, (*needshellpwd) ? "True" : "False");
 }
 
 void focusin(const XEvent *e) {
@@ -1156,15 +1156,6 @@ int execvpwitharg(const Arg *arg) {
   }
 }
 
-/* int sendxidrequest(char *send_buffer, SocketListener *socket_listener) { */
-/*   if (DEBUG_LEVEL == 1) { */
-/*     dprintf(log_file, "[log-tabbed] asking for client XID?\n"); */
-/*   } */
-/*   send_buffer[0] = '\0'; */
-/*   strlcat(send_buffer, "XID?", 63); */
-/*   return (socket_send(socket_listener, send_buffer, 63) == -1); */
-/* } */
-
 void spawn(const Arg *arg) {
   // Set working dir here...
   if (strnlen(xembed_port_option, sizeof(xembed_port_option)) == 0 ||
@@ -1196,12 +1187,95 @@ void spawn(const Arg *arg) {
                 server.port);
         size_t RECV_BUF_SIZE = 256;
         char recv_buf[RECV_BUF_SIZE];
+
+        int64_t last_pwd_ask_send_time = 0;
+        const int *needshellpwd = &shared_memory->needshellpwd;
+        unsigned long associated_client_xid = 0;
+        int64_t associated_client_xid_last_asked = 0;
+        int associated_client_xid_set = False;
+
+        char shell_pwd[256];
+        int shell_pwd_set = False;
+
+        int got_focus = False;
+        unsigned int timeoutms = TIMEOUT_TURBO_MODE_MS;
+        
         while (shared_memory->running) {
+          int64_t time = get_posix_time();
+          if (!associated_client_xid_set) {
+            if (associated_client_xid_last_asked == 0 ||
+                time - associated_client_xid_last_asked > 500) {
+              associated_client_xid_last_asked = time;
+              zmq_server_send(&server, "XID?", 5);
+            }
+          }
+          unsigned long *current_focused_window =
+              &shared_memory->current_focused_window;
+          if (associated_client_xid_set && shell_pwd_set) {
+            if (*current_focused_window == associated_client_xid) {
+              if (!got_focus) {
+                got_focus = True;
+                timeoutms = TIMEOUT_TURBO_MODE_MS;
+                zmq_server_send(&server, "turbo", 6);
+              }
+            } else if (got_focus) {
+                // TODO: mode sleep
+              got_focus = False;
+              timeoutms = TIMEOUT_SLEEP_MODE_MS;
+              zmq_server_send(&server, "sleep", 6);
+            }
+          }
           if (zmq_server_recv_nb(&server, recv_buf, RECV_BUF_SIZE) == 0) {
-            /* dprintf(log_file, "[log-tabbed] received msg: `%s`.\n", */
-            /*         recv_buf); */
+            dprintf(log_file, "[log-tabbed] received msg: `%s`.\n",
+                recv_buf);
+            if (strncmp(recv_buf, "XID:", 4) == 0) {
+              char XID_buf[32];
+              XID_buf[0] = '\0';
+              strlcat(XID_buf, recv_buf + 4, 31 - 4);
+              unsigned long XID = strtoul(XID_buf, NULL, 10);
+              if (XID == ULONG_MAX) {
+                dprintf(
+                    log_file,
+                    "[error-tabbed] invalid XID : strtoul(%s, 10) == ERROR\n",
+                    XID_buf);
+              } else {
+                associated_client_xid = XID;
+                associated_client_xid_set = True;
+                dprintf(log_file,
+                    "[log-tabbed] received client's XID : `%lu`\n",
+                    associated_client_xid);
+              }
+            } else if (strncmp(recv_buf, "PWD:", 4) == 0) {
+              shell_pwd[0] = '\0';
+              strlcat(shell_pwd, recv_buf + 4, 255 - 4);
+              shell_pwd_set = True;
+            }
           } else {
-            sleep_ms(100);
+            if (time == -1) {
+              dprintf(log_file, "[error-tabbed] get_posix_time() == -1, failed.\n");
+            } else if (*needshellpwd) {
+              if (last_pwd_ask_send_time == 0 ||
+                  time - last_pwd_ask_send_time > 500) {
+                last_pwd_ask_send_time = time;
+                zmq_server_send(&server, "PWD?", 5);
+              }
+              if (got_focus && shell_pwd_set) {
+                shell_pwd_set = False;
+                // shared text string of size 256
+                char *shared_shellpwd = shared_memory->shell_pwd;
+                int *shellpwd_written = &shared_memory->shellpwd_written;
+                shared_shellpwd[0] = '\0';
+                strlcat(shared_shellpwd, shell_pwd, 255);
+                shared_shellpwd[strnlen(shell_pwd, sizeof(shell_pwd))] =
+                    '\0';
+                *shellpwd_written = 1;
+                dprintf(
+                    log_file,
+                    "[log-tabbed] client `%lu` wrote shell pwd `%s`\n",
+                    associated_client_xid, shell_pwd);
+              }
+            }
+            sleep_ms(timeoutms);
           }
         }
         zmq_server_destroy(&server);
