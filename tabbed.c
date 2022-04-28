@@ -1293,7 +1293,7 @@ void spawn(const Arg *arg) {
           dprintf(log_file, "[error-tabbed] got invalid port: %d"
                             ", exitting...\n", socket_port);
         } else {
-          fprintf(stderr, "[log-tabbed] new tab, xembed_tcp_port is %d\n",
+          dprintf(log_file, "[log-tabbed] new tab, xembed_tcp_port is %d\n",
                   socket_port);
           char *shared_shellpwd = shared_memory->shell_pwd;
           int *shellpwd_written = &shared_memory->shellpwd_written;
@@ -1631,7 +1631,7 @@ int main(int argc, char *argv[]) {
   /*           TABBED_LOG_FILE); */
   /*   return -1; */
   /* } */
-  log_file = 2;
+  log_file = open("/dev/null", 0);
 
   // Initialize shared memory for
   shared_memory = (SharedMemory *)create_shared_memory(SHARED_MEMORY_SIZE);

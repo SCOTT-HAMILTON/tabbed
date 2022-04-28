@@ -24,8 +24,8 @@ LIBS = -L/usr/lib -lc -L${X11LIB} -lX11 ${FREETYPELIBS} -lbsd -lzmq
 # flags
 CPPFLAGS = -DVERSION=\"${VERSION}\" -D_DEFAULT_SOURCE
 
-CFLAGS = -std=c99 -pedantic -Wall -Os ${INCS} ${CPPFLAGS}
-LDFLAGS = -s ${LIBS}
+CFLAGS = -std=c99 -pedantic -Wall ${INCS} ${CPPFLAGS} -g
+LDFLAGS = ${LIBS}
 ifdef BUILD_INSTRUMENTED_COVERAGE
 	CFLAGS  += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR) -g -DBUILD_INSTRUMENTED_COVERAGE
 	LDFLAGS += --coverage -fprofile-dir=%q{SOURCE_DIR} -fprofile-prefix-path=$(CURDIR) -g
