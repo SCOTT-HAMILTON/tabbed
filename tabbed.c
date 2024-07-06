@@ -1226,8 +1226,8 @@ void spawn(const Arg *arg) {
             }
           }
           if (zmq_server_recv_nb(&server, recv_buf, RECV_BUF_SIZE) == 0) {
-            dprintf(log_file, "[log-tabbed] received msg: `%s`.\n",
-                recv_buf);
+            /* dprintf(log_file, "[log-tabbed] received msg: `%s`.\n", */
+                /* recv_buf); */
             if (strncmp(recv_buf, "XID:", 4) == 0) {
               char XID_buf[32];
               XID_buf[0] = '\0';
@@ -1241,13 +1241,19 @@ void spawn(const Arg *arg) {
               } else {
                 associated_client_xid = XID;
                 associated_client_xid_set = True;
-                dprintf(log_file,
-                    "[log-tabbed] received client's XID : `%lu`\n",
-                    associated_client_xid);
+                /* dprintf(log_file, */
+                /*     "[log-tabbed] received client's XID : `%lu`\n", */
+                /*     associated_client_xid); */
               }
             } else if (strncmp(recv_buf, "PWD:", 4) == 0) {
+                dprintf(log_file,
+                    "[log-tabbed] received client's PWD : `%s`\n",
+                    shell_pwd);
               shell_pwd[0] = '\0';
               strlcat(shell_pwd, recv_buf + 4, 255 - 4);
+              dprintf(log_file,
+                  "[log-tabbed] received client's PWD : `%s`\n",
+                    shell_pwd);
               shell_pwd_set = True;
             }
           } else {
@@ -1257,6 +1263,7 @@ void spawn(const Arg *arg) {
               if (last_pwd_ask_send_time == 0 ||
                   time - last_pwd_ask_send_time > 500) {
                 last_pwd_ask_send_time = time;
+                dprintf(log_file, "[log-tabbed] sending PWD? request...\n");
                 zmq_server_send(&server, "PWD?", 5);
               }
               if (got_focus && shell_pwd_set) {
@@ -1631,7 +1638,7 @@ int main(int argc, char *argv[]) {
   /*           TABBED_LOG_FILE); */
   /*   return -1; */
   /* } */
-  log_file = open("/dev/null", 0);
+  log_file = 2;
 
   // Initialize shared memory for
   shared_memory = (SharedMemory *)create_shared_memory(SHARED_MEMORY_SIZE);

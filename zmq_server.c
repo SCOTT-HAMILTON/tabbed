@@ -6,7 +6,8 @@
 
 int zmq_server_bind(ZmqServer *server) {
   server->context = zmq_ctx_new ();
-  server->socket = zmq_socket (server->context, ZMQ_PAIR);
+  server->socket = zmq_socket (server->context, ZMQ_REQ);
+  zmq_setsockopt (server->socket, ZMQ_IDENTITY, "tabbed", 6);
   int rc = zmq_bind (server->socket, "tcp://0.0.0.0:*");
   if (rc != 0) {
     dprintf (server->log_file, "[error-tabbed] zmq_bind failed: %s\n",
@@ -70,11 +71,17 @@ int zmq_server_recv_nb(ZmqServer *server, char* buf, int bufsize) {
   }
   int nbytes = zmq_msg_recv (&msg, server->socket, ZMQ_DONTWAIT);
   if (nbytes == -1) {
-    if (errno != EAGAIN) {
-      dprintf (server->log_file,
-          "[error-tabbed] zmq_msg_recv failed: %s\n",
-          zmq_strerror (errno));
+    if (errno == EFSM) {
+      /* dprintf (server->log_file, */
+          /* "[log-tabbed] zmq_msg_recv skipping, can't receive in current state...\n"); */
+      return -1;
     }
+    else if (errno != EAGAIN) {
+      dprintf (server->log_file,
+          "[error-tabbed] zmq_msg_recv failed: zmq_errno=%d, %s\n",
+          errno, zmq_strerror (errno));
+    }
+
     return -1;
   }
   size_t msgsize = zmq_msg_size(&msg);
@@ -103,6 +110,10 @@ void zmq_server_send(ZmqServer* server, const char* message, size_t size) {
   memcpy (zmq_msg_data (&msg), message, size);
   rc = zmq_msg_send (&msg, server->socket, ZMQ_DONTWAIT);
   if (rc != size) {
+    if (errno == EFSM) {
+      dprintf (server->log_file, "[log-tabbed] zmq_msg_send ignored msg: '%s', socket not ready...\n", message);
+      return;
+    }
     if (errno != EAGAIN) {
       dprintf (server->log_file,
           "[error-tabbed] zmq_msg_send failed: "
