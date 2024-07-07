@@ -1513,7 +1513,7 @@ void xsettitle(Window w, const char *str) {
 }
 
 void usage(void) {
-  die("usage: %s [-dfksv] [-g geometry] [-n name] [-p [s+/-]pos]\n"
+  die("usage: %s [-dfksvD] [-g geometry] [-n name] [-p [s+/-]pos]\n"
       "       [-r narg] [-o color] [-O color] [-t color] [-T color]\n"
       "       [-u color] [-U color] [ -x option ] [ -w option ] command...\n",
       argv0);
@@ -1529,6 +1529,14 @@ int main(int argc, char *argv[]) {
   xembed_port_option[0] = '\0';
   set_working_dir_option[0] = '\0';
 
+  /* log_file = mkstemp(TABBED_LOG_FILE); */
+  /* if (log_file == -1) { */
+  /*   dprintf(log_file, */
+  /*           "[error-tabbed] can't make log file : mkstemp(%s) == -1\n", */
+  /*           TABBED_LOG_FILE); */
+  /*   return -1; */
+  /* } */
+  log_file = open("/dev/null", 0);
   ARGBEGIN {
   case 'c':
     closelastclient = True;
@@ -1598,6 +1606,9 @@ int main(int argc, char *argv[]) {
     strlcat(xembed_port_option, xstr, 127);
     xembed_port_option_set = 1;
     break;
+  case 'D':
+    log_file = 2;
+    break;
   default:
     usage();
     break;
@@ -1631,14 +1642,6 @@ int main(int argc, char *argv[]) {
     doinitspawn = False;
     fillagain = False;
   }
-  /* log_file = mkstemp(TABBED_LOG_FILE); */
-  /* if (log_file == -1) { */
-  /*   dprintf(log_file, */
-  /*           "[error-tabbed] can't make log file : mkstemp(%s) == -1\n", */
-  /*           TABBED_LOG_FILE); */
-  /*   return -1; */
-  /* } */
-  log_file = 2;
 
   // Initialize shared memory for
   shared_memory = (SharedMemory *)create_shared_memory(SHARED_MEMORY_SIZE);
