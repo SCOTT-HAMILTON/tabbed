@@ -1,5 +1,5 @@
 { lib
-, gcc11Stdenv
+, gcc14Stdenv
 , gitignoreSource
 , autoPatchelfHook
 , xorgproto
@@ -13,8 +13,8 @@
 , binutils
 , gnugrep
 }:
-gcc11Stdenv.mkDerivation {
-  name = "tabbed-20180309-patched";
+gcc14Stdenv.mkDerivation {
+  name = "tabbed-20180309-patched" + (if buildInstrumentedCoverage then "-instrumented" else "");
 
   src = gitignoreSource [] ./.;
 

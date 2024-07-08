@@ -1,31 +1,34 @@
 let
+  pkgs = import <nixpkgs> {};
   str_sleep_time = builtins.toString 5;
   # For extra determinism
-  nixpkgs = builtins.fetchTarball {
-    url = "http://github.com/NixOS/nixpkgs/archive/389249fa9b35b3071b4ccf71a3c065e7791934df.tar.gz";
-    sha256 = "1z087f1m1k4pii2v2xai8n0yd3m57svgslzzbm7fwdjjzhn8g2rl";
-  };
-  gcc11Pkgs = import (builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/tarball/d75d0b9";
-    sha256 = "14nabmj4xgamrz8nskzl595j1nkaxch1pssmw1dfr0xp0pbgf4cg";
-  }) {};
-  shamilton = import (builtins.fetchTarball {
-    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
-    sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
-  }) {};
-  pkgs = import nixpkgs {};
+  shamilton = import /home/scott/GIT/nur-packages { localUsage = true; inherit pkgs;};
+  # shamilton = import (builtins.fetchTarball {
+  #   url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
+  #   sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
+  # }) {};
   patched-alacritty = shamilton.patched-alacritty;
-  instrumented-tabbed = with gcc11Pkgs; callPackage ../tabbed.nix {
+  instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
-    inherit (nix-gitignore) gitignoreSource;
+    inherit (pkgs.nix-gitignore) gitignoreSource;
   };
   source = ../.;
+
+  runPrepareCov = pkgs.writeScriptBin "prepare-coverage" ''
+    #!${pkgs.stdenv.shell}
+    # Copy sources to tabbed directory
+    find '${source}' -name '*.c' -exec cp {} /tmp \;
+    find '${source}' -name '*.h' -exec cp {} /tmp \;
+    find '${instrumented-tabbed}/share/gcno-tabbed' -name '*.gcno' -exec cp {} /tmp \;
+  '';
 
   runTabbedAlacritty = pkgs.writeScriptBin "tabbed-alacritty" ''
     #!${pkgs.stdenv.shell}
     export TABBED_XEMBED_PORT_OPTION='--xembed-tcp-port'
     export TABBED_WORKING_DIR_OPTION='--working-directory'
     export SOURCE_DIR=/tmp
+    export XDG_RUNTIME_DIR=$(mktemp -d)
+    echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
     timeout 10m ${instrumented-tabbed}/bin/tabbed -g 500x500 -cr 2 alacritty --embed "" 1>&2 &
   '';
 
@@ -37,27 +40,30 @@ let
     echo "Fork Id : $fork_id"
     xprop -id $main_id -f _TABBED_SELECT_TAB 8s -set _TABBED_SELECT_TAB $fork_id
   '';
-
+  
   makeCoverageResults = pkgs.writeScriptBin "make-coverage-results" ''
     #!${pkgs.stdenv.shell}
     killall tabbed
     ls -lh
-    gcov_drv=$(cat ${gcc11Pkgs.gcc11Stdenv.cc}/bin/gcc|tail -n5|head -n1|grep -Eo "/nix/.*/gcc"|rev|cut -d/ -f3-|rev)
+    gcov_drv=$(cat ${pkgs.gcc14Stdenv.cc}/bin/gcc|tail -n5|head -n1|grep -Eo "/nix/.*/gcc"|rev|cut -d/ -f3-|rev)
     lcov --gcov-tool "$gcov_drv/bin/gcov" --capture --base-directory . --directory . --output-file=tabbed-alacritty.lcov
     mkdir res
     genhtml tabbed-alacritty.lcov --output-directory res
   '';
 in
-  import "${nixpkgs}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
-    system = "x86_64-linux";
+  import "${<nixpkgs>}/nixos/tests/make-test-python.nix" ({ pkgs, ...}: {
+    # system = "x86_64-linux";
+    name = "tabbed-test";
+    skipLint = true;
 
     nodes.machine = { nodes, config, pkgs, ... }:
     {
       imports = [
-        "${nixpkgs}/nixos/tests/common/user-account.nix"
-        "${nixpkgs}/nixos/tests/common/x11.nix"
+        "${<nixpkgs>}/nixos/tests/common/user-account.nix"
+        "${<nixpkgs>}/nixos/tests/common/x11.nix"
       ];
       environment.systemPackages = with pkgs; [
+        screen
         binutils
         coreutils
         glibc
@@ -67,10 +73,11 @@ in
         lcov
         makeCoverageResults
         patched-alacritty
+        runPrepareCov
         runAtomSpawn
         runTabbedAlacritty
         xdotool
-        xlibs.xwininfo
+        xorg.xwininfo
       ];
     };
 
@@ -81,27 +88,26 @@ in
 
       start_all()
 
-      sleep_time = int(${str_sleep_time})
-
-      # Copy sources to tabbed directory
-      machine.succeed(
-          "find '${source}' -name '*.c' -exec cp {} /tmp \;"
-      )
-      machine.succeed(
-          "find '${source}' -name '*.h' -exec cp {} /tmp \;"
-      )
-      machine.succeed(
-          "find '${instrumented-tabbed}/share/gcno-tabbed' -name '*.gcno' -exec cp {} /tmp \;"
-      )
-      machine.wait_for_x()
-
-      machine.succeed("tabbed-alacritty")
-      # machine.wait_for_text("root@machine")
-      machine.sleep(sleep_time * 5)
-      machine.screenshot("screen1")
+      def focus_tabbed():
+        ## Focus newly opened window
+        machine.succeed('xdotool windowfocus $(xdotool search "tabbed" 2>/dev/null | head -n1 | tail -n1)')
       
+
+      sleep_time = int(${str_sleep_time})
+      
+      machine.succeed("${runPrepareCov}/bin/prepare-coverage")
+      machine.wait_for_x()
+      machine.succeed("${runTabbedAlacritty}/bin/tabbed-alacritty")
+      machine.wait_for_text("root@machine")
+      focus_tabbed()
+      machine.screenshot("screen0")
+
       #### Normal Use case sequences
       ### Goto /tmp
+      machine.send_key("ctrl-shift-ret")
+      machine.sleep(sleep_time)
+      focus_tabbed()
+      machine.screenshot("screen1")
       machine.send_chars("cd /tmp")
       machine.send_key("ret")
       machine.sleep(sleep_time)
@@ -109,6 +115,7 @@ in
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
       machine.sleep(sleep_time)
+      focus_tabbed()
       machine.screenshot("screen3")
       ### Goto /proc
       machine.send_chars("cd /proc")
@@ -118,19 +125,20 @@ in
       ### Open a new tab
       machine.send_key("ctrl-shift-ret")
       machine.sleep(sleep_time)
+      focus_tabbed()
       machine.screenshot("screen5")
       
       ### click on middle tab
       window_width = 1000
       machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) {window_width} 500")
       machine.succeed(
-          f"xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1 click 4 click 5 click 2"
+         "xdotool mousemove --window $(xdotool getactivewindow) 500 10 click 1 click 4 click 5 click 2"
       )
       machine.sleep(sleep_time)
       machine.screenshot("screen6")
 
       ### Show left and right arrows
-      machine.succeed(f"xdotool windowsize $(xdotool getactivewindow) 200 500")
+      machine.succeed("xdotool windowsize $(xdotool getactivewindow) 200 500")
       machine.sleep(sleep_time)
       machine.send_key("ctrl-shift-l")
       machine.sleep(sleep_time)
@@ -144,7 +152,7 @@ in
       ### Rotate right and move tab left
       machine.send_key("ctrl-shift-l")
       machine.sleep(sleep_time)
-      machine.send_key("ctrl-shift-j")
+      machine.send_key("ctrl-shift-h")
       machine.sleep(sleep_time)
       machine.screenshot("screen9")
 
@@ -153,10 +161,6 @@ in
       machine.sleep(sleep_time)
       machine.screenshot("screen10")
 
-      ### Atom spawn
-      machine.succeed("atom-spawn")
-      machine.sleep(sleep_time)
-
       ### Goto ~ and exit tmp tab
       machine.send_chars("cd ~")
       machine.send_key("ret")
@@ -164,10 +168,8 @@ in
       machine.screenshot("screen11")
 
       ### Try to resize embedded window
-      machine.succeed("xwininfo -tree -root 1>&2")
-      machine.succeed(
-          'xdotool windowsize $(xwininfo -tree -root|grep "Alacritty"|head -n1|grep -Eo "0x([0-9]|[a-z])* ") 500 500'
-      )
+      machine.send_key("f11")
+      machine.succeed("xdotool windowsize $(xdotool search 'tabbed') 500 500")
       machine.sleep(sleep_time)
       machine.screenshot("screen12")
 
@@ -176,11 +178,11 @@ in
       machine.sleep(sleep_time)
       machine.screenshot("screen13")
 
-      machine.succeed("make-coverage-results 1>&2")
+      machine.succeed("${makeCoverageResults}/bin/make-coverage-results 1>&2")
       machine.copy_from_vm("tabbed-alacritty.lcov", "coverage_data")
       machine.copy_from_vm("res", "coverage_data")
-      out_dir = os.environ.get("out", os.getcwd())
-      eprint(
+      out_dir = os.environ.get("out", os.getcwd)
+      print(
           'Coverage data written to "{}/coverage_data/tabbed-alacritty.lcov"'.format(out_dir)
       )
       machine.screenshot("screen14")

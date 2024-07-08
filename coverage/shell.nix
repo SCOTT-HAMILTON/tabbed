@@ -34,7 +34,7 @@ with pkgs; mkShell {
     find "${instrumented-tabbed}/share/gcno-tabbed" -name "*.gcno" -exec cp {} test \;
     cd test
     export SOURCE_DIR=$(pwd)
-    gcov_drv=$(cat ${gcc11Stdenv.cc}/bin/gcc|tail -n5|head -n1|grep -Eo "/nix/.*/gcc"|rev|cut -d/ -f3-|rev)
+    gcov_drv=$(cat ${gcc14Stdenv.cc}/bin/gcc|tail -n5|head -n1|grep -Eo "/nix/.*/gcc"|rev|cut -d/ -f3-|rev)
     alias gcov="$gcov_drv/bin/gcov"
     run(){
       lcov --gcov-tool "$gcov_drv/bin/gcov" --capture --base-directory . --directory . --output-file=out.lcov
