@@ -2,11 +2,11 @@ let
   pkgs = import <nixpkgs> {};
   str_sleep_time = builtins.toString 5;
   # For extra determinism
-  shamilton = import /home/scott/GIT/nur-packages { localUsage = true; inherit pkgs;};
-  # shamilton = import (builtins.fetchTarball {
-  #   url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/9bd7ba3";
-  #   sha256 = "1mimljrgffmhm0hv60h9bjiiwhb069m7g1fxnss4nfr5vz1yjady";
-  # }) {};
+  # shamilton = import /home/scott/GIT/nur-packages { localUsage = true; inherit pkgs;};
+  shamilton = import (builtins.fetchTarball {
+    url = "https://github.com/SCOTT-HAMILTON/nur-packages/tarball/e1ea639";
+    sha256 = "08vxq12d8j3zlkph6974sc2ahqchksw117y6ya6cmh5617yzcl10";
+  }) {};
   patched-alacritty = shamilton.patched-alacritty;
   instrumented-tabbed = pkgs.callPackage ../tabbed.nix {
     buildInstrumentedCoverage = true;
