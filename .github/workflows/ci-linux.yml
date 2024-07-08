@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches:
@@ -24,12 +23,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: cachix/install-nix-action@v13
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v27
         with:
-          nix_path: nixpkgs=channel:nixos-20.09
+          nix_path: nixpkgs=channel:nixos-24.05
           extra_nix_config: "system-features = nixos-test benchmark big-parallel kvm"
-      - uses: cachix/cachix-action@v9
+      - uses: cachix/cachix-action@v15
         with:
           name: scott-hamilton
       - name: Run coverage with Nix test-driver
@@ -39,13 +38,13 @@ jobs:
           ls -lh
           ls -lh results
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4.3.4
         with:
           name: code-coverage-report
           path: |
             results
       - name: Push coverage data to Codacy
-        uses: codacy/codacy-coverage-reporter-action@v1
+        uses: codacy/codacy-coverage-reporter-action@v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: result/coverage_data/tabbed-alacritty.lcov
