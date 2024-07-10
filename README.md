@@ -60,7 +60,7 @@ I higly recommand you to check out the above link but normally this command shou
 
 [![Flowchart Diagram](https://mermaid.ink/img/eyJjb2RlIjoiZ3JhcGggVERcbiAgICBBW1RhYmJlZCBwYXJlbnQgcHJvY2Vzc11cbiAgICBcbiAgICBBIC0tPnxYSUQgMXwgVEMxW1RhYmJlZCBDbGllbnQgMV1cbiAgICBBIC0tPnxYSUQgMnwgVEMyW1RhYmJlZCBDbGllbnQgMl1cbiAgICBBIC0tPnxYSUQgM3wgVEMzW1RhYmJlZCBDbGllbnQgM11cbiAgICBUQzEgLS0-IEExW0FsYWNyaXR0eSB0YWIgMV1cbiAgICBUQzIgLS0-IEEyW0FsYWNyaXR0eSB0YWIgMl1cbiAgICBUQzMgLS0-IEEzW0FsYWNyaXR0eSB0YWIgM11cbiAgICAiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGFyayJ9LCJ1cGRhdGVFZGl0b3IiOmZhbHNlfQ)](https://mermaid-js.github.io/mermaid-live-editor/#/edit/eyJjb2RlIjoiZ3JhcGggVERcbiAgICBBW1RhYmJlZCBwYXJlbnQgcHJvY2Vzc11cbiAgICBcbiAgICBBIC0tPnxYSUQgMXwgVEMxW1RhYmJlZCBDbGllbnQgMV1cbiAgICBBIC0tPnxYSUQgMnwgVEMyW1RhYmJlZCBDbGllbnQgMl1cbiAgICBBIC0tPnxYSUQgM3wgVEMzW1RhYmJlZCBDbGllbnQgM11cbiAgICBUQzEgLS0-IEExW0FsYWNyaXR0eSB0YWIgMV1cbiAgICBUQzIgLS0-IEEyW0FsYWNyaXR0eSB0YWIgMl1cbiAgICBUQzMgLS0-IEEzW0FsYWNyaXR0eSB0YWIgM11cbiAgICAiLCJtZXJtYWlkIjp7InRoZW1lIjoiZGFyayJ9LCJ1cGRhdGVFZGl0b3IiOmZhbHNlfQ)
 
-When spawning a new alacritty window, tabbed also forks a child process that will communicate with this alacritty window threw Unix Domain Sockets (cf [wiki](https://systemprogrammingatntu.github.io/mp2/unix_socket.html)).
+When spawning a new alacritty window, tabbed also forks a child process that will communicate with this alacritty window through ZeroMQ Rep/Req sockets (Req->tabbed, Rep->the client).
 This allows non-blocking bidirectionnal communications between the child process and the alacritty window.
 **A child is referred to as a client in tabbed**
 
