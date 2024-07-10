@@ -24,7 +24,7 @@ This project is a fork of tabbed. (A name needs to be found tho).
 It enables terminal emulators like alacritty to follow the previous working directory when opening a new tab.
 For now, the only patched terminal to support this protocol is alacritty, see my fork : [https://github.com/SCOTT-HAMILTON/alacritty](https://github.com/SCOTT-HAMILTON/alacritty)
 
-## How to test it right know
+## How to test it right now
 
 A nix shell is configured so that you can get this setup running in a few commands.
 This shell builds the tabbed fork and this alacritty fork.
